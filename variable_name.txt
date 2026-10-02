@@ -1,0 +1,14 @@
+HL - QHBoxLayout
+VL - QVBoxLayout
+GL - QGridLayout
+SA - QScrollArea
+WD - QWidget
+GB - QGroupBox
+CH - QCheckBox
+RB - QRadioButton
+B  - QPushButton
+L  - QLabel
+LW - QListWidget
+T  - QTextEdit
+CB - QComboBox
+SP - QSplitter
