@@ -125,6 +125,33 @@ QCheckBox::indicator:checked {
     image: none;
 }
 
+/* === RADIO BUTTON === */
+QRadioButton {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    spacing: 8px;
+    color: #3e2723;
+    padding: 3px 0px;
+}
+
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #8b7355;
+    border-radius: 10px;
+    background-color: #fdfbf7;
+}
+
+QRadioButton::indicator:hover {
+    border-color: #5d4037;
+    background-color: #f5f0e8;
+}
+
+QRadioButton::indicator:checked {
+    background-color: #5d4037;
+    border-color: #3e2723;
+}
+
 /* === COMBO BOX === */
 QComboBox {
     font-family: 'Segoe UI', 'Roboto', sans-serif;
@@ -170,16 +197,18 @@ QScrollArea {
 
 /* === SCROLL BAR === */
 QScrollBar:vertical {
-    background-color: #efebe9;
+    background-color: transparent;
     width: 12px;
     border-radius: 6px;
     margin: 0px;
+    border: none;
 }
 
 QScrollBar::handle:vertical {
     background-color: #a1887f;
     border-radius: 6px;
     min-height: 30px;
+    border: none;
 }
 
 QScrollBar::handle:vertical:hover {
@@ -189,18 +218,27 @@ QScrollBar::handle:vertical:hover {
 QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {
     height: 0px;
+    border: none;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background-color: transparent;
+    border: none;
 }
 
 QScrollBar:horizontal {
-    background-color: #efebe9;
+    background-color: transparent;
     height: 12px;
     border-radius: 6px;
+    border: none;
 }
 
 QScrollBar::handle:horizontal {
     background-color: #a1887f;
     border-radius: 6px;
     min-width: 30px;
+    border: none;
 }
 
 QScrollBar::handle:horizontal:hover {
@@ -210,6 +248,13 @@ QScrollBar::handle:horizontal:hover {
 QScrollBar::add-line:horizontal,
 QScrollBar::sub-line:horizontal {
     width: 0px;
+    border: none;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background-color: transparent;
+    border: none;
 }
 
 /* === LIST WIDGET === */
@@ -333,4 +378,10 @@ QToolTip {
     border: 1px solid #8b7355;
     border-radius: 3px;
     padding: 4px 8px;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #8b7355;
+    margin: 4px 10px;
 }

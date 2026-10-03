@@ -1,11 +1,9 @@
 import sqlite3
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+from PyQt6.QtCore import Qt, pyqtSignal, QRegularExpression
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QScrollArea, QPlainTextEdit, QMessageBox, QComboBox,
-                             QListWidget, QListWidgetItem, QListView)
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QVBoxLayout, QWidget
-from PyQt5.QtCore import QRegularExpression
-from PyQt5.QtGui import QRegularExpressionValidator
+                             QListWidget, QListWidgetItem, QListView, QLineEdit)
+from PyQt6.QtGui import QRegularExpressionValidator
 import json
 from scripts.CRUD import *
 
@@ -16,7 +14,7 @@ class WinEditEfects(QWidget):
 
     def __init__(self, main_win):
         super().__init__()
-        self.setWindowTitle("Редактирование сиска эффектов")
+        self.setWindowTitle("Редактирование списка эффектов")
         self.resize(400, 300)
         self.db = "./data/alchemy_database.db"
         self.db_table = "Effects"
@@ -76,11 +74,11 @@ class WinEditEfects(QWidget):
             self,
             "Подтверждение",
             f"{text}",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No  # Кнопка по умолчанию
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No  # Кнопка по умолчанию
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.delete_list.add(StartName)
             row_widget.deleteLater()
 
@@ -97,63 +95,60 @@ class WinEditEfects(QWidget):
         self.HV_row.addWidget(self.buttonX)
 
         self.buttonClone = QPushButton("⤷")
-        #self.buttonX.clicked.connect(lambda *args, w=self.WD_row: self._delete_row(w))
         self.buttonClone.setMaximumHeight(maxH)
         self.HV_row.addWidget(self.buttonClone)
 
         self.CB_components = QComboBox()
         for i in range(len(self.components)):
             self.CB_components.addItem(f"{self.components[i][0]} {self.components[i][2]}")
-            self.CB_components.setItemData(i, self.components[i][1], Qt.ToolTipRole)
+            # PyQt6: Qt.ToolTipRole -> Qt.ItemDataRole.ToolTipRole
+            self.CB_components.setItemData(i, self.components[i][1], Qt.ItemDataRole.ToolTipRole)
 
         self.CB_components.setProperty("OldValue", component)
-        self.CB_components.setMaximumHeight(maxH)                 # Задаем максимальную высоту
-        self.CB_components.setMaximumWidth(200)                   # Задаем максимальную ширину
-        self.HV_row.addWidget(self.CB_components)                 # Добавляем в строку
+        self.CB_components.setMaximumHeight(maxH)
+        self.CB_components.setMaximumWidth(200)
+        self.HV_row.addWidget(self.CB_components)
 
         self.CB_states = QComboBox()
 
         for i in range(len(self.states)):
             self.CB_states.addItem(self.states[i][0])
-            self.CB_states.setItemData(i, self.states[i][1], Qt.ToolTipRole)
+            # PyQt6: Qt.ToolTipRole -> Qt.ItemDataRole.ToolTipRole
+            self.CB_states.setItemData(i, self.states[i][1], Qt.ItemDataRole.ToolTipRole)
 
-        self.CB_states.setMaximumHeight(maxH)                 # Задаем максимальную высоту
-        self.CB_states.setMaximumWidth(200)                   # Задаем максимальную ширину
-        self.HV_row.addWidget(self.CB_states)                 # Добавляем в строку
+        self.CB_states.setMaximumHeight(maxH)
+        self.CB_states.setMaximumWidth(200)
+        self.HV_row.addWidget(self.CB_states)
 
         regex = QRegularExpression(r"^[0-9]+(\.[0-9]+)?$")
         validator = QRegularExpressionValidator(regex)
 
-        self.cost = QLineEdit()                          # Текстовое поле для названия действия
-        self.cost.setText(cost)                     # Заполняем его
-        self.cost.setMaximumHeight(maxH)                 # Задаем максимальную высоту
-        self.cost.setMaximumWidth(200)                   # Задаем максимальную ширину
+        self.cost = QLineEdit()
+        # Защита от краша, если cost == None
+        self.cost.setText(cost if cost is not None else "")
+        self.cost.setMaximumHeight(maxH)
+        self.cost.setMaximumWidth(200)
         self.cost.setValidator(validator)
-        self.HV_row.addWidget(self.cost)                 # Добавляем в строку
+        self.HV_row.addWidget(self.cost)
 
         self.CB_actions = QComboBox()
 
         for i in range(len(self.actions)):
             self.CB_actions.addItem(self.actions[i][0])
-            self.CB_actions.setItemData(i, self.actions[i][1], Qt.ToolTipRole)
+            # PyQt6: Qt.ToolTipRole -> Qt.ItemDataRole.ToolTipRole
+            self.CB_actions.setItemData(i, self.actions[i][1], Qt.ItemDataRole.ToolTipRole)
 
-        self.CB_actions.setMaximumHeight(maxH)                 # Задаем максимальную высоту
-        self.CB_actions.setMaximumWidth(200)                   # Задаем максимальную ширину
-        self.HV_row.addWidget(self.CB_actions)                 # Добавляем в строку
+        self.CB_actions.setMaximumHeight(maxH)
+        self.CB_actions.setMaximumWidth(200)
+        self.HV_row.addWidget(self.CB_actions)
 
         self.CB_MTags = QComboBox()
         self.CB_MTags.addItems(self.MTags)
-        self.CB_MTags.setMaximumHeight(maxH)  # Задаем максимальную высоту
-        self.CB_MTags.setMaximumWidth(200)  # Задаем максимальную ширину
-        self.HV_row.addWidget(self.CB_MTags)  # Добавляем в строку
+        self.CB_MTags.setMaximumHeight(maxH)
+        self.CB_MTags.setMaximumWidth(200)
+        self.HV_row.addWidget(self.CB_MTags)
 
         self.CB_ATags = CustomDropdown("Доп. эффект", self.ATags)
-
-        # if ecosys != None:
-        #     self.CB_ATags.setChecks(ecosys)
-        #     self.CB_ATags.setProperty("OldValue", ecosys)
-        # else:
-        #     self.CB_ATags.setProperty("OldValue", [])
 
         self.HV_row.addWidget(self.CB_ATags)
 
@@ -165,15 +160,15 @@ class WinEditEfects(QWidget):
         self.scroll_layout.addWidget(self.WD_row)
 
     def _data_verification_1(self, SA, required_layout, index, *data):
-        if all([x.isspace() or len(x) == 0 for x in data]):     # Если все необходимые поля пустые - игнорируем
+        if all([x.isspace() or len(x) == 0 for x in data]):
             return False
-        for x in data:                                # Если только часть полей пустые обращаем на это внимание
+        for x in data:
             if x.isspace() or len(x) == 0:
                 _ = QMessageBox.information(
                     self,
                     "Заполните поле",
                     f"В одном из добавляемых объектов вы не заполнили необходимую информацию!",
-                    QMessageBox.Ok
+                    QMessageBox.StandardButton.Ok  # PyQt6
                 )
                 SA.ensureWidgetVisible(required_layout.itemAt(index).widget())
                 return False
@@ -188,11 +183,11 @@ class WinEditEfects(QWidget):
             row = required_layout.itemAt(i).widget().layout()
             name = row.itemAt(2).widget().currentText()
             state = row.itemAt(3).widget().currentText()
-            cost = row.itemAt(4).widget().text() #
+            cost = row.itemAt(4).widget().text()
             action = row.itemAt(5).widget().currentText()
             Mtag = row.itemAt(6).widget().currentText()
             Atag = row.itemAt(7).widget().getSelectedItems()
-            desc = row.itemAt(8).widget().toPlainText() #
+            desc = row.itemAt(8).widget().toPlainText()
 
             if self._data_verification_1(SA, required_layout, i, cost, desc):
                 if any([row.itemAt(k).widget().property("OldValue") != name for k in range(2, row.count())]):
@@ -201,7 +196,7 @@ class WinEditEfects(QWidget):
                             self,
                             "Комбинация повторяется",
                             f"Комбинация {name} {state} {action} уже было!",
-                            QMessageBox.Ok
+                            QMessageBox.StandardButton.Ok  # PyQt6
                         )
                         SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
                         return
@@ -228,7 +223,8 @@ class WinEditEfects(QWidget):
 
         scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(scroll_content)
-        self.scroll_layout.setAlignment(Qt.AlignTop)
+        # PyQt6: Qt.AlignTop -> Qt.AlignmentFlag.AlignTop
+        self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.scroll_area.setWidget(scroll_content)
         self.components = self._get_components("Components")
@@ -236,9 +232,6 @@ class WinEditEfects(QWidget):
         self.actions = self._get_other_data("Actions")
         self.MTags = ["Токсин", "Умение", "Усиление",  "Ослабление", "Модификатор", "Восстановление"]
         self.ATags = ["Загуститель", "Растворитель", "Стабилизатор", "Возмутитель", "Усилитель", "Потеря"]
-
-        # for data in self._get_data():
-        #     self._create_row(data[0], data[1], json.loads(data[2]), data[3])
 
         controls = QHBoxLayout()
 
@@ -255,7 +248,7 @@ class WinEditEfects(QWidget):
         self.main_layout.addWidget(self.scroll_area)
         self.main_layout.addLayout(controls)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # type: ignore[override]
         self.closed.emit()
 
         self.main_win._CloseSecondWin(self)

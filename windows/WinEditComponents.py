@@ -1,5 +1,5 @@
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QScrollArea, QPlainTextEdit, QMessageBox, QComboBox)
 import json
 from scripts.CRUD import *
@@ -38,11 +38,11 @@ class WinEditComponents(QWidget):
             self,
             "Подтверждение",
             f"{text}",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No  # Кнопка по умолчанию
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No  # Кнопка по умолчанию
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.delete_list.add(OldValue)
             row_widget.deleteLater()
 
@@ -124,7 +124,7 @@ class WinEditComponents(QWidget):
                     self,
                     "Заполните поле",
                     f"В одном из добавляемых объектов вы не заполнили необходимую информацию!",
-                    QMessageBox.Ok
+                    QMessageBox.StandardButton.Ok
                 )
                 SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
                 return False
@@ -137,7 +137,7 @@ class WinEditComponents(QWidget):
                             self,
                             "Название повторяется",
                             f"Название {name} уже было выше!",
-                            QMessageBox.Ok
+                            QMessageBox.StandardButton.Ok
                         )
                         SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
                         return
@@ -161,7 +161,7 @@ class WinEditComponents(QWidget):
 
         scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(scroll_content)
-        self.scroll_layout.setAlignment(Qt.AlignTop)
+        self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.scroll_area.setWidget(scroll_content)
 

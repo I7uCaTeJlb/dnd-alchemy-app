@@ -1,9 +1,10 @@
 import sys
-from PyQt5 import QtWidgets, QtGui
-from PyQt5.QtCore import Qt
+from PyQt6 import QtWidgets, QtGui
+from PyQt6.QtCore import Qt
 #from Settings import WinSettings
 import sqlite3
 from math import ceil
+import os
 
 from windows.test import WinEditActions, WinEditState, WinEditEcosystem, WinEditBase
 from windows.WinEditComponents import WinEditComponents
@@ -30,7 +31,7 @@ class Ui_MainWindow(object):
             self.CB_base.addItem(i[0])
             # Устанавливаем tooltip для конкретного элемента
             index = self.CB_base.count() - 1
-            self.CB_base.setItemData(index, i[1], Qt.ToolTipRole)
+            self.CB_base.setItemData(index, i[1], Qt.ItemDataRole.ToolTipRole)
 
     def _UpdateListEcosystems(self):
         m = self._GetInfoDB("Ecosystems")
@@ -70,47 +71,47 @@ class Ui_MainWindow(object):
 
         self.file_menu = self.menu_bar.addMenu('Файл')
 
-        self.file_menu_A_open = QtWidgets.QAction("Открыть")
-        self.file_menu_A_save = QtWidgets.QAction("Сохранить")
-        self.file_menu_A_save_as = QtWidgets.QAction("Сохранить как...")
+        self.file_menu_A_open = QtGui.QAction("Открыть")
+        self.file_menu_A_save = QtGui.QAction("Сохранить")
+        self.file_menu_A_save_as = QtGui.QAction("Сохранить как...")
         self.file_menu_M_work_data = QtWidgets.QMenu("Работа с данными")
 
-        self.M_work_data_M_list_effects = QtWidgets.QAction("Редактировать список эффектов")
+        self.M_work_data_M_list_effects = QtGui.QAction("Редактировать список эффектов")
         self.M_work_data_M_list_effects.triggered.connect(lambda: self._OpenNewWindow(WinEditEfects))
 
-        self.M_work_data_M_list_components = QtWidgets.QAction("Редактировать список компонентов")
+        self.M_work_data_M_list_components = QtGui.QAction("Редактировать список компонентов")
         self.M_work_data_M_list_components.triggered.connect(lambda: self._OpenNewWindow(WinEditComponents))
 
-        self.M_work_data_M_list_bases = QtWidgets.QAction("Редактировать список основ")
+        self.M_work_data_M_list_bases = QtGui.QAction("Редактировать список основ")
         self.M_work_data_M_list_bases.triggered.connect(lambda: self._OpenNewWindow(WinEditBase))
 
-        self.M_work_data_M_list_ecosystem = QtWidgets.QAction("Редактировать список экосистем")
+        self.M_work_data_M_list_ecosystem = QtGui.QAction("Редактировать список экосистем")
         self.M_work_data_M_list_ecosystem.triggered.connect(lambda: self._OpenNewWindow(WinEditEcosystem))
 
-        self.M_work_data_M_list_actions = QtWidgets.QAction("Редактировать список действий")
+        self.M_work_data_M_list_actions = QtGui.QAction("Редактировать список действий")
         self.M_work_data_M_list_actions.triggered.connect(lambda: self._OpenNewWindow(WinEditActions))
 
-        self.M_work_data_M_list_state = QtWidgets.QAction("Редактировать список состояний ингредиентов")
+        self.M_work_data_M_list_state = QtGui.QAction("Редактировать список состояний ингредиентов")
         self.M_work_data_M_list_state.triggered.connect(lambda: self._OpenNewWindow(WinEditState))
 
         self.file_menu_M_import = QtWidgets.QMenu("Импорт данных")
-        self.M_import_M_list_components = QtWidgets.QAction("Список компонентов")
-        self.M_import_M_list_bases = QtWidgets.QAction("Список основ")
-        self.M_import_M_list_ecosystem = QtWidgets.QAction("Список экосистем")
-        self.M_import_M_list_actions = QtWidgets.QAction("Список действий")
-        self.M_import_M_list_state = QtWidgets.QAction("Список состояний ингредиентов")
+        self.M_import_M_list_components = QtGui.QAction("Список компонентов")
+        self.M_import_M_list_bases = QtGui.QAction("Список основ")
+        self.M_import_M_list_ecosystem = QtGui.QAction("Список экосистем")
+        self.M_import_M_list_actions = QtGui.QAction("Список действий")
+        self.M_import_M_list_state = QtGui.QAction("Список состояний ингредиентов")
 
         self.file_menu_M_export = QtWidgets.QMenu("Экспорт данных")
-        self.M_export_M_list_components = QtWidgets.QAction("Список компонентов")
-        self.M_export_M_list_bases = QtWidgets.QAction("Список основ")
-        self.M_export_M_list_ecosystem = QtWidgets.QAction("Список экосистем")
-        self.M_export_M_list_actions = QtWidgets.QAction("Список действий")
-        self.M_export_M_list_state = QtWidgets.QAction("Список состояний ингредиентов")
+        self.M_export_M_list_components = QtGui.QAction("Список компонентов")
+        self.M_export_M_list_bases = QtGui.QAction("Список основ")
+        self.M_export_M_list_ecosystem = QtGui.QAction("Список экосистем")
+        self.M_export_M_list_actions = QtGui.QAction("Список действий")
+        self.M_export_M_list_state = QtGui.QAction("Список состояний ингредиентов")
 
-        self.file_menu_A_setting = QtWidgets.QAction("Настройки")
+        self.file_menu_A_setting = QtGui.QAction("Настройки")
         #self.file_menu_A_setting.triggered.connect(lambda: self._OpenNewWindow(WinSettings))
 
-        self.file_menu_A_exit = QtWidgets.QAction("Выход")
+        self.file_menu_A_exit = QtGui.QAction("Выход")
         self.file_menu.addAction(self.file_menu_A_open)
         self.file_menu.addAction(self.file_menu_A_save)
         self.file_menu.addAction(self.file_menu_A_save_as)
@@ -142,7 +143,7 @@ class Ui_MainWindow(object):
         self.file_menu.addAction(self.file_menu_A_setting)
         self.file_menu.addAction(self.file_menu_A_exit)
 
-        self.A_edit_list_components = QtWidgets.QAction("132")
+        self.A_edit_list_components = QtGui.QAction("132")
         # self.file_menu_A_work_data.ac
 
         self.db_menu = self.menu_bar.addMenu('Правила')
@@ -346,8 +347,8 @@ class Ui_MainWindow(object):
 
         self.LW_all_components = QtWidgets.QListWidget()
         self.LW_all_components.size()
-        self.LW_all_components.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                             QtWidgets.QSizePolicy.Expanding)
+        self.LW_all_components.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                                             QtWidgets.QSizePolicy.Policy.Expanding)
 
         for i in range(100):
             self.LW_all_components.addItem(
@@ -360,8 +361,8 @@ class Ui_MainWindow(object):
 
         self.LW_added_components = QtWidgets.QListWidget()
         self.LW_added_components.size()
-        self.LW_added_components.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                               QtWidgets.QSizePolicy.Expanding)
+        self.LW_added_components.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                                               QtWidgets.QSizePolicy.Policy.Expanding)
 
         self.L_text_base = QtWidgets.QLabel("Основа для проведения алхимического опыта:")
 
@@ -412,8 +413,10 @@ class Ui_MainWindow(object):
 
         MainWindow.setCentralWidget(self.SP_main)  # говорим, что главный виджет является центральныm
 
-
 if __name__ == "__main__":
+    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "0"  # автоматическим определением коэффициента масштабирования на основе DPI монитора
+    os.environ["QT_SCALE_FACTOR"] = "0.8"            # Применяет глобальный множитель ко всем элементам интерфейса
+
     app = QtWidgets.QApplication(sys.argv)
 
     with open("data/styles.qss", "r", encoding="utf-8") as f:
@@ -424,4 +427,4 @@ if __name__ == "__main__":
     ui.setupUi(window)
 
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

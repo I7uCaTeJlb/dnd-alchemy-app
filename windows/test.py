@@ -1,5 +1,5 @@
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
                              QScrollArea, QPlainTextEdit, QMessageBox, QStackedWidget,
                              QRadioButton, QLayout, QGridLayout, QComboBox)
 from scripts.CRUD import *
@@ -37,11 +37,11 @@ class EditWin(QWidget):
             self,
             "Подтверждение",
             f"{text}",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No  # Кнопка по умолчанию
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No  # Кнопка по умолчанию
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.delete_list.add(OldValue)
             row_widget.deleteLater()
 
@@ -209,7 +209,7 @@ class EditWin(QWidget):
                     self,
                     "Два одинаковых названия опций",
                     f'Название "{name_option}" повторяется!',
-                    QMessageBox.Ok
+                    QMessageBox.StandardButton.Ok
                 )
                 return
 
@@ -224,7 +224,7 @@ class EditWin(QWidget):
                             self,
                             "Не выбран список",
                             f'У опции "{name_option}" не выбран список выбора!',
-                            QMessageBox.Ok
+                            QMessageBox.StandardButton.Ok
                         )
                         return
                     option_dict[name_option] = desc_option.itemAtPosition(j, 0).widget().property("TypeOption")
@@ -251,7 +251,7 @@ class EditWin(QWidget):
                     self,
                     "Добавьте описание",
                     f"Добавьте описание для {name}",
-                    QMessageBox.Ok
+                    QMessageBox.StandardButton.Ok
                 )
                 SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
                 return
@@ -261,7 +261,7 @@ class EditWin(QWidget):
                     self,
                     "Дайте название описанию",
                     f"Следующее описание не имеет название: {desc}",
-                    QMessageBox.Ok
+                    QMessageBox.StandardButton.Ok
                 )
                 SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
                 return
@@ -274,7 +274,7 @@ class EditWin(QWidget):
                             self,
                             "Название повторяется",
                             f"Название {name} уже было выше!",
-                            QMessageBox.Ok
+                            QMessageBox.StandardButton.Ok
                         )
                         SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
                         return
@@ -305,7 +305,7 @@ class EditWin(QWidget):
 
         scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(scroll_content)
-        self.scroll_layout.setAlignment(Qt.AlignTop)
+        self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.scroll_area.setWidget(scroll_content)
 

@@ -1,6 +1,7 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton,
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton,
                              QListWidget, QListWidgetItem, QFrame)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
+
 
 class CustomDropdown(QWidget):
     """Кастомный выпадающий список с любым содержимым"""
@@ -28,17 +29,22 @@ class CustomDropdown(QWidget):
 
         # Выпадающий фрейм (изначально скрыт)
         self.dropdown_frame = QFrame()
-        self.dropdown_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        # В PyQt6: Shape и Shadow — отдельные перечисления
+        self.dropdown_frame.setFrameStyle(
+            QFrame.Shape.StyledPanel | QFrame.Shadow.Raised
+        )
         self.dropdown_frame.setMinimumHeight(120)
 
         # Список с чекбоксами
         self.listWidget = QListWidget()
-        self.listWidget.setFrameStyle(QFrame.NoFrame)
+        self.listWidget.setFrameStyle(QFrame.Shape.NoFrame)
 
         for item in self.items:
             list_item = QListWidgetItem(item)
-            list_item.setFlags(list_item.flags() | Qt.ItemIsUserCheckable)
-            list_item.setCheckState(Qt.Unchecked)
+            # В PyQt6: ItemIsUserCheckable → ItemFlag.ItemIsUserCheckable
+            list_item.setFlags(list_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            # В PyQt6: Unchecked → CheckState.Unchecked
+            list_item.setCheckState(Qt.CheckState.Unchecked)
             self.listWidget.addItem(list_item)
 
         self.listWidget.itemChanged.connect(self.on_item_changed)
@@ -66,7 +72,8 @@ class CustomDropdown(QWidget):
         self.selected_items = []
         for i in range(self.listWidget.count()):
             list_item = self.listWidget.item(i)
-            if list_item.checkState() == Qt.Checked:
+            # В PyQt6: Checked → CheckState.Checked
+            if list_item.checkState() == Qt.CheckState.Checked:
                 self.selected_items.append(list_item.text())
 
         self.itemSelected.emit(', '.join(self.selected_items))
@@ -81,17 +88,18 @@ class CustomDropdown(QWidget):
         self.listWidget.clear()
         for item in items:
             list_item = QListWidgetItem(item)
-            list_item.setFlags(list_item.flags() | Qt.ItemIsUserCheckable)
-            list_item.setCheckState(Qt.Unchecked)
+            list_item.setFlags(list_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            list_item.setCheckState(Qt.CheckState.Unchecked)
             self.listWidget.addItem(list_item)
 
     def setChecks(self, items):
         for i in range(self.listWidget.count()):
             CB = self.listWidget.item(i)
             if CB.text() in items:
-                CB.setCheckState(Qt.Checked)
+                CB.setCheckState(Qt.CheckState.Checked)
             else:
-                CB.setCheckState(Qt.Unchecked)
+                CB.setCheckState(Qt.CheckState.Unchecked)
+
 
 class CustomDropdown2(CustomDropdown):
     """Кастомный выпадающий список с любым содержимым"""
@@ -107,6 +115,6 @@ class CustomDropdown2(CustomDropdown):
 
         for item in items:
             list_item = QListWidgetItem(item)
-            list_item.setFlags(list_item.flags() | Qt.ItemIsUserCheckable)
-            list_item.setCheckState(Qt.Unchecked)
+            list_item.setFlags(list_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            list_item.setCheckState(Qt.CheckState.Unchecked)
             self.listWidget.addItem(list_item)
