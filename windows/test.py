@@ -45,8 +45,17 @@ class EditWin(QWidget):
             self.delete_list.add(OldValue)
             row_widget.deleteLater()
 
-    def _fun_button_option(self, options):      # Функция для кнопки "+ опции"
+    def _fun_button_option(self, button: QPushButton, row):      # Функция для кнопки "+ опции"
+        self.BTN = button
+        self.ROW = row
+
+        options = button.property("TypeOption")
+
         if options != None:
+            for name in options.keys():
+
+                self._create_option(name)
+        elif self.ROW.property('TypeOption') != None:
             pass
 
         self.stack.setCurrentIndex(1)
@@ -178,7 +187,8 @@ class EditWin(QWidget):
 
         self.BT = QPushButton("+ опции")
         self.BT.setProperty("OldValue", optional)                       # Нынешний словарь опций
-        self.BT.clicked.connect(lambda: self._fun_button_option(self.BT.property("OldValue")))
+        self.BT.clicked.connect(lambda *e, btn = self.BT, row = self.HV_row:
+                                self._fun_button_option(btn, row))
 
         self.BT.setMaximumHeight(maxH)
         self.HV_row.addWidget(self.BT)
@@ -187,17 +197,40 @@ class EditWin(QWidget):
         self.scroll_layout.addWidget(self.WD_row)
 
     def _save_option(self, layout: QLayout):
+
         option_dict = dict()
 
         for i in range(layout.count()):
             item = layout.itemAt(i).widget().layout()                       # Область опции
             name_option = item.itemAt(0).itemAt(1).widget().text()          # Название опции
+
+            if name_option in option_dict.keys():
+                _ = QMessageBox.information(
+                    self,
+                    "Два одинаковых названия опций",
+                    f'Название "{name_option}" повторяется!',
+                    QMessageBox.Ok
+                )
+                return
+
             desc_option = item.itemAt(1)                                    # Описание для опции
+
             for j in range(desc_option.rowCount()):                         # Проходимся по всем вариантам
                 if desc_option.itemAtPosition(j, 0).widget().isChecked():   # Если дошли до выбранного варианта
+                    desc = desc_option.itemAtPosition(j, 0).widget().property("TypeOption")
+                    print(desc)
+                    if desc[1] == None and desc[0] != "text":
+                        _ = QMessageBox.information(
+                            self,
+                            "Не выбран список",
+                            f'У опции "{name_option}" не выбран список выбора!',
+                            QMessageBox.Ok
+                        )
+                        return
                     option_dict[name_option] = desc_option.itemAtPosition(j, 0).widget().property("TypeOption")
 
-        print(option_dict)
+        print(self.BTN)
+        self.BTN.setProperty("TypeOption", option_dict)
 
     def _save_list(self):
 
@@ -261,6 +294,8 @@ class EditWin(QWidget):
         self.stack = QStackedWidget()                   # Стек для подмены содержимого
 
         # ===ГЛАВНОЕ ОКНО: СОЗДАНИЕ НОВОГО===
+        self.BTN = None                                 # Чтобы программа знала для какого нового делаем опции
+        self.ROW = None                                 # Чтобы программа знала для какого нового делаем опции
 
         self.VL_create_new = QVBoxLayout()              # Макет для окна создания нового
         self.WD_create_new = QWidget()                  # Виджет для окна создания нового
@@ -314,7 +349,7 @@ class EditWin(QWidget):
         self.B_NewOption = QPushButton("Создать новое")
         self.B_NewOption.clicked.connect(lambda: self._create_option())
         self.B_SaveOption = QPushButton("Сохранить изменения")
-        self.B_SaveOption.clicked.connect(lambda: self._save_option(self.VL_additional_properies))
+        self.B_SaveOption.clicked.connect(lambda:self._save_option(self.VL_additional_properies))
         self.B_CloseOption = QPushButton("Отмена")
         self.B_CloseOption.clicked.connect(lambda: (self.stack.setCurrentIndex(0),
                                               self._clear_layout(self.VL_additional_properies)))
