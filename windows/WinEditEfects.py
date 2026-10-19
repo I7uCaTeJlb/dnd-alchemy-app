@@ -1,4 +1,3 @@
-import sqlite3
 from PyQt6.QtCore import Qt, pyqtSignal, QRegularExpression
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QScrollArea, QPlainTextEdit, QMessageBox, QComboBox,
@@ -6,7 +5,6 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
 from PyQt6.QtGui import QRegularExpressionValidator
 import json
 from scripts.CRUD import *
-
 from MyWidgets.CustomDropdown import CustomDropdown
 
 class WinEditEfects(QWidget):
@@ -22,16 +20,6 @@ class WinEditEfects(QWidget):
         self.main_win = main_win
 
         self._init_ui()
-
-    def _get_other_data(self, table):
-        connection = sqlite3.connect(self.db)
-        cursor = connection.cursor()
-        cursor.execute(f"SELECT name, desc FROM {table}")
-        result = []
-        for data in cursor.fetchall():
-            result.append(data)
-        connection.close()
-        return result
 
     def _get_components(self, table):
         connection = sqlite3.connect(self.db)
@@ -109,21 +97,26 @@ class WinEditEfects(QWidget):
         self.CB_components.setMaximumWidth(200)
         self.HV_row.addWidget(self.CB_components)
 
-        self.CB_states = QComboBox()
-
+        self.CB_states = QComboBox()            # Состояния
         for i in range(len(self.states)):
-            self.CB_states.addItem(self.states[i][0])
-            # PyQt6: Qt.ToolTipRole -> Qt.ItemDataRole.ToolTipRole
+            if len(self.states[i]) == 2:
+                self.CB_states.addItem(self.states[i][0], userData=None)
+            else:
+                self.CB_states.addItem(self.states[i][0], userData=self.states[i][2])
             self.CB_states.setItemData(i, self.states[i][1], Qt.ItemDataRole.ToolTipRole)
 
         self.CB_states.setMaximumHeight(maxH)
         self.CB_states.setMaximumWidth(200)
         self.HV_row.addWidget(self.CB_states)
 
+        # ЗДЕСЬ ОПЦИИ ДЛЯ СОСТОЯНИЙ
+
+
         regex = QRegularExpression(r"^[0-9]+(\.[0-9]+)?$")
         validator = QRegularExpressionValidator(regex)
 
         self.cost = QLineEdit()
+        self.cost.setPlaceholderText("ЗМ")
         # Защита от краша, если cost == None
         self.cost.setText(cost if cost is not None else "")
         self.cost.setMaximumHeight(maxH)
@@ -228,8 +221,11 @@ class WinEditEfects(QWidget):
 
         self.scroll_area.setWidget(scroll_content)
         self.components = self._get_components("Components")
-        self.states = self._get_other_data("State")
-        self.actions = self._get_other_data("Actions")
+
+        with open_db() as cursor:
+            self.states = read_all("State", cursor)
+            self.actions = read_all("Actions", cursor)
+
         self.MTags = ["Токсин", "Умение", "Усиление",  "Ослабление", "Модификатор", "Восстановление"]
         self.ATags = ["Загуститель", "Растворитель", "Стабилизатор", "Возмутитель", "Усилитель", "Потеря"]
 

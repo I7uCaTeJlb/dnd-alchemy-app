@@ -2,6 +2,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
                              QScrollArea, QPlainTextEdit, QMessageBox, QStackedWidget,
                              QRadioButton, QLayout, QGridLayout, QComboBox)
+from sqlalchemy.testing.config import options
+
 from scripts.CRUD import *
 
 class EditWin(QWidget):
@@ -45,18 +47,25 @@ class EditWin(QWidget):
             self.delete_list.add(OldValue)
             row_widget.deleteLater()
 
+    def _delete_option(self, layout: QLayout, WD_option: QWidget):
+        layout.removeWidget(WD_option)
+        WD_option.setParent(None)           # опционально, чтобы виджет полностью отсоединился
+        WD_option.deleteLater()             # опционально, чтобы освободить память
+
     def _fun_button_option(self, button: QPushButton, row):      # Функция для кнопки "+ опции"
         self.BTN = button
         self.ROW = row
 
-        options = button.property("TypeOption")
+        B_options = button.property("TypeOption")
+        R_options = button.property("OldValue")
 
         if options != None:
-            for name in options.keys():
+            for name in B_options.keys():
+                self._create_option(name, B_options[name])
 
-                self._create_option(name)
-        elif self.ROW.property('TypeOption') != None:
-            pass
+        if R_options != None:
+            for name in R_options.keys():
+                self._create_option(name, R_options[name])
 
         self.stack.setCurrentIndex(1)
 
@@ -73,6 +82,7 @@ class EditWin(QWidget):
             WD.setEnabled(check)
 
     def _create_option(self, name = None, data = None):
+
         maxH = 40
 
         self.WD_option = QWidget()          # Виджет для макета
@@ -83,7 +93,9 @@ class EditWin(QWidget):
 
         self.buttonX = QPushButton("X")
         self.buttonX.setMaximumWidth(100)
-        #self.buttonX.clicked.connect(lambda *args, w=self.WD_row: self._delete_row(w))
+        self.buttonX.clicked.connect(lambda *args, l = self.VL_additional_properies,
+                                            w=self.WD_option:
+                                     self._delete_option(l, w))
         self.buttonX.setMaximumHeight(maxH)
         self.Layout1.addWidget(self.buttonX)
 
@@ -93,25 +105,34 @@ class EditWin(QWidget):
         self.Layout1.addWidget(self.name)                # Добавляем в строку
 
         self.RB_text_desc = QRadioButton("Текстовое описание")
+
         self.RB_text_desc.setProperty("TypeOption", ["text", None])
-        self.RB_text_desc.setChecked(True)
+
+        if data == None:
+            self.RB_text_desc.setChecked(True)
+        else:
+            if data[0] == "text": self.RB_text_desc.setChecked(True)
+
         self.Layout2.addWidget(self.RB_text_desc, 0, 0)
 
         list_option = ["Выбор одного", "Выбор нескольких"]
         list_tags   = ["combobox", "multiselect"]
         for i in range(len(list_option)):
             self.HL_CBDV = QHBoxLayout()
+
             self.RB_combobox_desc = QRadioButton(list_option[i])
+
             self.RB_combobox_desc.setProperty("TypeOption", [list_tags[i], None])
             self.RB_combobox_desc.toggled.connect(lambda check, layout = self.HL_CBDV:
                                                   self._Function1(check, layout))
 
             self.RB_CBDV1 = QRadioButton("Из таблиц механики")
+
             self.CB_CBDV1 = QComboBox()
             self.CB_CBDV1.addItems(["Состояния", "Действия", "База", "Экосистемы"])
             self.RB_CBDV1.toggled.connect(lambda *_, rbtn=self.RB_combobox_desc,
                                                  text = self.CB_CBDV1.currentText(), j=i:
-                                          rbtn.setProperty("TypeOption", [list_tags[j], text, 0]))
+                                          rbtn.setProperty("TypeOption", [list_tags[j], text]))
             self.CB_CBDV1.currentTextChanged.connect(lambda *txt, rbtn = self.RB_combobox_desc, j = i:
                                                      rbtn.setProperty("TypeOption", [list_tags[j], *txt]))
 
@@ -122,11 +143,26 @@ class EditWin(QWidget):
             self.RB_CBDV2 = QRadioButton("Собстенный список")
             self.list = MyPlainTextEdit()
             self.list.focus_lost.connect(lambda text, rbtn = self.RB_combobox_desc, j = i:
-                                         rbtn.setProperty("TypeOption", [list_tags[j], text, 1]))
+                                         rbtn.setProperty("TypeOption", [list_tags[j], text]))
             self.list.setMaximumHeight(maxH)
             self.list.hide()
             self.RB_CBDV2.toggled.connect(lambda check, widget=self.list:
                                           widget.show() if check else widget.hide())
+
+            if data != None:
+                if data[0] == list_tags[i]:
+                    self.RB_combobox_desc.setChecked(True)
+                    if ',' in data[1]:
+                        self.RB_CBDV2.setChecked(True)
+                        self.list.insertPlainText(data[1])
+                    else:
+                        self.RB_CBDV1.setChecked(True)
+                        index = self.CB_CBDV1.findText(data[1])
+                        if index != -1:
+                            self.CB_CBDV1.setCurrentIndex(index)  # Устанавливаем элемент выбранным
+                        else:
+                            self.RB_CBDV2.setChecked(True)
+                            self.list.insertPlainText(data[1])
 
             self.WD_CBDV2 = QWidget()
             self.HL_CBDV.addWidget(self.RB_CBDV1)
@@ -146,6 +182,9 @@ class EditWin(QWidget):
 
         self.WD_option.setLayout(self.VL_option)
         self.VL_additional_properies.addWidget(self.WD_option)
+
+        if data != None:
+            pass
 
     def _clear_layout(self, layout: QLayout):
         if layout is None:
@@ -218,7 +257,6 @@ class EditWin(QWidget):
             for j in range(desc_option.rowCount()):                         # Проходимся по всем вариантам
                 if desc_option.itemAtPosition(j, 0).widget().isChecked():   # Если дошли до выбранного варианта
                     desc = desc_option.itemAtPosition(j, 0).widget().property("TypeOption")
-                    print(desc)
                     if desc[1] == None and desc[0] != "text":
                         _ = QMessageBox.information(
                             self,
@@ -229,20 +267,21 @@ class EditWin(QWidget):
                         return
                     option_dict[name_option] = desc_option.itemAtPosition(j, 0).widget().property("TypeOption")
 
-        print(self.BTN)
         self.BTN.setProperty("TypeOption", option_dict)
 
     def _save_list(self):
 
-        SA = self.main_layout.itemAt(0).widget()
-        required_layout = SA.widget().layout()
-
+        SA = self.main_layout.itemAt(0).widget()        # Получаем виджет-подменку self.stack
+        # Получаем VL, в котором храняться наши элементы
+        required_layout = SA.widget(0).layout().itemAt(0).widget().widget().layout()
         NewActionList = {}
 
         for i in range(required_layout.count()):
+
             row = required_layout.itemAt(i).widget().layout()
             name = row.itemAt(1).widget().toPlainText()
             desc = row.itemAt(2).widget().toPlainText()
+            optionals = row.itemAt(3).widget().property("TypeOption")
 
             if (name.isspace() or len(name) == 0) and (desc.isspace() or len(desc) == 0):
                 continue
@@ -267,7 +306,8 @@ class EditWin(QWidget):
                 return
             else:
                 if (row.itemAt(1).widget().property("OldValue") != name) \
-                    or (row.itemAt(2).widget().property("OldValue") != desc):
+                    or (row.itemAt(2).widget().property("OldValue") != desc) \
+                        or (optionals != row.property("TypeOption")):
 
                     if name in NewActionList.keys():
                         _ = QMessageBox.information(
@@ -279,15 +319,16 @@ class EditWin(QWidget):
                         SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
                         return
                     else:
-                        NewActionList[name] = (row.itemAt(1).widget().property("OldValue"), desc)
+                        NewActionList[name] = (row.itemAt(1).widget().property("OldValue"), desc, optionals)
 
-        # with open_db() as cursor:
-        #
-        #     for name in self.delete_list: delete_of_name(cursor, self.db_table, name)
-        #
-        #     columns, PK, _ = get_structure_table(cursor, self.db_table)
-        #     for name, values in NewActionList.items(): upsert(cursor, self.db_table, name, values,
-        #                                                       columns = columns, primary_key = PK)
+        ##### СОХРАНЕНИЕ ИЗМЕНЕНИЙ В БД #####
+        with open_db() as cursor:
+
+            for name in self.delete_list: delete_of_name(cursor, self.db_table, name)
+
+            columns, PK, _ = get_structure_table(cursor, self.db_table)
+            for name, values in NewActionList.items(): upsert(cursor, self.db_table, name, values,
+                                                              columns = columns, primary_key = PK)
 
     def _init_ui(self):
         self.main_layout = QVBoxLayout(self)            # Главный макет, благодаря переданному self
@@ -302,7 +343,6 @@ class EditWin(QWidget):
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-
         scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(scroll_content)
         self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -311,7 +351,7 @@ class EditWin(QWidget):
 
         with open_db() as cursor:
             for data in read_all(self.db_table, cursor):
-                self._create_row(data[0], data[1])
+                self._create_row(*data)
 
         controls = QHBoxLayout()
 

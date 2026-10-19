@@ -101,7 +101,6 @@ class WinEditComponents(QWidget):
 
         SA = self.main_layout.itemAt(0).widget()
         required_layout = SA.widget().layout()
-
         NewActionList = {}
 
         for i in range(required_layout.count()):
@@ -112,26 +111,26 @@ class WinEditComponents(QWidget):
             ecsys = row.itemAt(3).widget().getSelectedItems()
             desc = row.itemAt(4).widget().toPlainText()
 
+            new_data = [name, rare, ecsys, desc]            # Для проверки изменений
+
             if (name.isspace() or len(name) == 0) and (desc.isspace() or len(desc) == 0):
                 continue
             #####################################
             for x in [desc, name, ecsys]:  # Если только часть полей пустые обращаем на это внимание
-                if isinstance(x, str):
-                    if not (x.isspace() or len(x) == 0): return True
-                else:
-                     if len(x) != 0: return True
-                _ = QMessageBox.information(
-                    self,
-                    "Заполните поле",
-                    f"В одном из добавляемых объектов вы не заполнили необходимую информацию!",
-                    QMessageBox.StandardButton.Ok
-                )
-                SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
-                return False
+                a = False
+                if isinstance(x, str): a = x.isspace()
+                if len(str(x)) == 0 or a:
+                    _ = QMessageBox.information(
+                        self,
+                        "Заполните поле",
+                        f"В одном из добавляемых объектов вы не заполнили необходимую информацию!",
+                        QMessageBox.StandardButton.Ok
+                    )
+                    SA.ensureWidgetVisible(required_layout.itemAt(i).widget())
+                    return
             ####################################
             else:
-
-                if any([row.itemAt(k).widget().property("OldValue") != name for k in range(1, row.count())]):
+                if any([row.itemAt(k).widget().property("OldValue") != new_data[k-1] for k in range(1, row.count())]):
                     if name in NewActionList.keys():
                         _ = QMessageBox.information(
                             self,
@@ -168,7 +167,7 @@ class WinEditComponents(QWidget):
         with open_db() as cursor:
             self.list_ecosystems = [x[0] for x in read_all("Ecosystems", cursor)]
             for data in read_all(self.db_table, cursor):
-                self._create_row(data[0], data[1], json.loads(data[2]), data[3])
+                self._create_row(*data)
 
         controls = QHBoxLayout()
 
