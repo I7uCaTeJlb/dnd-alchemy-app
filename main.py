@@ -1,27 +1,53 @@
 import sys
 from PyQt6 import QtWidgets, QtGui
+from PyQt6.QtWidgets import QStackedWidget
 from PyQt6.QtCore import Qt
-#from Settings import WinSettings
 import sqlite3
 from math import ceil
 import os
 
-from windows.test import WinEditActions, WinEditState, WinEditEcosystem, WinEditBase
+from windows.WinEdit_ActionState import WinEditActions, WinEditState
+from windows.WinEdit_BaseEcosystems import WinEditEcosystem, WinEditBase
 from windows.WinEditComponents import WinEditComponents
 from windows.WinEditEfects import WinEditEfects
 
 class Ui_MainWindow(object):
-    def _OpenNewWindow(self, win):
+    def _OpenNewWindow(self, WindowClass):
+        """
+        Всегда создаём новое окно, добавляем в стек и переключаемся на него.
+        """
+        try:
+            window = WindowClass(self)
+            # Добавляем в стек главного окна
+            self.stack.addWidget(window)
+            self.stack.setCurrentWidget(window)
 
-        if win not in self.wins_list.keys():
-            new_win = win(main_win = self)
-            self.wins_list[win] = new_win
-            new_win.show()
-        else:
-            self.wins_list[win].activateWindow()
+            # Важно: соединяем сигнал закрытия, чтобы удалить виджет из стека
+            if hasattr(window, 'closed'):
+                window.closed.connect(lambda w=window: self._on_window_closed(w))
+
+        except Exception as e:
+            print(f"Error opening window {WindowClass.__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _on_window_closed(self, window):
+        """Вызывается, когда дочернее окно испускает сигнал closed."""
+        # Убираем из текущего индекса, если оно там
+        if self.stack.currentWidget() == window:
+            self.stack.setCurrentIndex(0)  # Возвращаемся к главному экрану
+
+        # Удаляем из стека
+        self.stack.removeWidget(window)
+        window.deleteLater()
 
     def _CloseSecondWin(self, close_win):
-        del self.wins_list[type(close_win)]
+        """Старый метод, теперь можно оставить пустым или вызывать _on_window_closed"""
+        pass
+
+    def _CloseSecondWin(self, close_win):
+        self.stack.removeWidget(close_win)
+        close_win.deleteLater()
 
     def _UpdateCBBase(self):
         self.CB_base.clear()
@@ -358,12 +384,19 @@ class Ui_MainWindow(object):
         self.VL_main_c.addWidget(self.LW_all_components)
 
         # ===ПРАВАЯ ЧАСТЬ===
+        ##### ОКОШКО #####
+        self.stack = QStackedWidget()
 
+        # Главный виджет (индекс 0)
         self.LW_added_components = QtWidgets.QListWidget()
-        self.LW_added_components.size()
         self.LW_added_components.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
                                                QtWidgets.QSizePolicy.Policy.Expanding)
+        self.stack.addWidget(self.LW_added_components)
 
+        # Кэш: класс окна → индекс в stack
+        self._window_cache = {}
+
+        ##### ----- #####
         self.L_text_base = QtWidgets.QLabel("Основа для проведения алхимического опыта:")
 
         self.CB_base = QtWidgets.QComboBox()
@@ -381,7 +414,7 @@ class Ui_MainWindow(object):
 
         self.B_save_RAO = QtWidgets.QPushButton("Сохранить результат алхимического опыта")
 
-        self.VL_main_r.addWidget(self.LW_added_components)
+        self.VL_main_r.addWidget(self.stack)
         self.VL_main_r.addWidget(self.L_text_base)
         self.VL_main_r.addWidget(self.CB_base)
         self.VL_main_r.addWidget(self.L_rez_RAO)

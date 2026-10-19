@@ -47,8 +47,21 @@ def read_all(table: str, cursor):
 
     return result
 
-def delete_of_name(cursor, table: str, name: str):  # Функция удаления строки по name
-    cursor.execute(f'DELETE FROM {table} WHERE Name = ?', (name,))
+
+def delete_of_name(cursor, table: str, name):
+    if isinstance(name, str):
+        cursor.execute(f'DELETE FROM {table} WHERE "name" = ?', (name,))
+    elif isinstance(name, (tuple, list)):
+        _, PK_list, _ = get_structure_table(cursor, table)
+        if len(name) != len(PK_list):
+            raise ValueError(
+                f"Ожидается {len(PK_list)} значений PK для {table}, получено {len(name)}"
+            )
+        where_clause = " AND ".join([f'"{c}" = ?' for c in PK_list])
+        query = f'DELETE FROM {table} WHERE {where_clause}'
+        cursor.execute(query, tuple(name))
+    else:
+        raise TypeError(f"Неподдерживаемый тип name: {type(name)}")
 
 def get_structure_table(cursor, table: str):        # Функуция для возврата данных о столбцах
 
@@ -66,17 +79,20 @@ def get_structure_table(cursor, table: str):        # Функуция для в
 
     return name_column, PK_list, name_type_list
 
-def upsert(cursor, table: str, *data, columns=None, primary_key=None):
-    new_name = data[0]
-    old_name = data[1][0]
 
-    # Сериализуем ВСЕ нестандартные типы (list, tuple, dict, set)
-    values = []
-    for x in data[1][1:]:
-        if isinstance(x, (list, tuple, dict, set)):
-            values.append(dumps(x, ensure_ascii=False))
-        else:
-            values.append(x)
+def upsert(cursor, table: str, *data, columns=None, primary_key=None):
+    """
+    data[0] - новый PK (кортеж в порядке PK_list)
+    data[1] - (старый PK, value1, value2, ...)
+    """
+    new_pk = data[0]
+    old_pk = data[1][0]
+    values = data[1][1:]
+
+    if not isinstance(new_pk, (tuple, list)):
+        new_pk = (new_pk,)
+    if not isinstance(old_pk, (tuple, list)):
+        old_pk = (old_pk,)
 
     if columns is None or primary_key is None:
         temp_cursor = cursor.connection.cursor()
@@ -86,25 +102,52 @@ def upsert(cursor, table: str, *data, columns=None, primary_key=None):
         names_list, PK_list = columns, primary_key
 
     other_cols = [c for c in names_list if c not in PK_list]
-    if len(values) != len(other_cols):
-        raise ValueError(f"{table}: ожидалось {len(other_cols)} значений, получено {len(values)}")
 
-    if old_name is None:
-        cols = [f'"{PK_list[0]}"'] + [f'"{c}"' for c in other_cols]
-        query = (f'INSERT INTO {table} ({", ".join(cols)}) '
-                 f'VALUES ({", ".join(["?"] * len(cols))})')
-        cursor.execute(query, (new_name, *values))
+    # Сериализуем JSON поля
+    serialized_values = []
+    for x in values:
+        if isinstance(x, (list, tuple, dict, set)):
+            serialized_values.append(dumps(x, ensure_ascii=False))
+        else:
+            serialized_values.append(x)
+
+    if len(serialized_values) != len(other_cols):
+        raise ValueError(f"{table}: ожидалось {len(other_cols)} значений, получено {len(serialized_values)}")
+
+    # Создаём словарь: имя колонки → значение
+    col_values = {}
+
+    # Заполняем PK значения
+    for i, col in enumerate(PK_list):
+        if i < len(new_pk):
+            col_values[col] = new_pk[i]
+
+    # Заполняем остальные значения
+    for i, col in enumerate(other_cols):
+        col_values[col] = serialized_values[i]
+
+    # Проверяем, является ли запись новой
+    is_new_record = all(v is None for v in old_pk)
+
+    if is_new_record:
+        # INSERT
+        cols = [f'"{c}"' for c in names_list]
+        all_values = [col_values[c] for c in names_list]
+        query = f'INSERT INTO {table} ({", ".join(cols)}) VALUES ({", ".join(["?"] * len(cols))})'
+        print(f"DEBUG INSERT: {query}")
+        print(f"DEBUG VALUES: {all_values}")
+        cursor.execute(query, all_values)
         return
 
-    if new_name.strip() == str(old_name).strip():
-        set_clause   = ", ".join(f'"{c}" = ?' for c in other_cols)
-        where_clause = ", ".join(f'"{c}" = ?' for c in PK_list)
+    # UPDATE
+    set_clause = ", ".join([f'"{c}" = ?' for c in names_list])
+    where_clause = " AND ".join([f'"{c}" = ?' for c in PK_list])
 
-        query = f'UPDATE {table} SET {set_clause} WHERE {where_clause}'
-        cursor.execute(query, (*values, old_name))
-    else:
-        set_clause   = ", ".join(f'"{c}" = ?' for c in names_list)
-        where_clause = ", ".join(f'"{c}" = ?' for c in PK_list)
+    all_values = [col_values[c] for c in names_list] + list(old_pk)
+    query = f'UPDATE {table} SET {set_clause} WHERE {where_clause}'
 
-        query = f'UPDATE {table} SET {set_clause} WHERE {where_clause}'
-        cursor.execute(query, (new_name, *values, old_name))
+    print(f"DEBUG UPDATE: {query}")
+    print(f"DEBUG VALUES: {all_values}")
+    print(f"DEBUG col_values: {col_values}")
+
+    cursor.execute(query, all_values)
