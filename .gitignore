@@ -1,0 +1,75 @@
+# === ВИРТУАЛЬНОЕ ОКРУЖЕНИЕ (САМОЕ ВАЖНОЕ!) ===
+venv/
+.venv/
+env/
+venv313/
+
+# === PYTHON ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# === IDE (PyCharm, VS Code) ===
+.idea/
+.vscode/
+*.swp
+*.suo
+*.user
+*.iml
+*.ipr
+*.iws
+.project
+.settings/
+
+# === БАЗА ДАННЫХ (не коммитим локальную БД) ===
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+
+# === ОПЕРАЦИОННАЯ СИСТЕМА ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# === PYINSTALLER (понадобится на этапе сборки) ===
+*.spec
+build/
+dist/
+
+# === ЛОГИ И ВРЕМЕННЫЕ ФАЙЛЫ ===
+*.log
+*.tmp
+*.temp
+
+# === PYUPDATER (понадобится на этапе автообновлений) ===
+pyu-data/
+deploy/
+
+# === РАБОЧИЕ ФАЙЛЫ ===
+Task.txt
+variable_name.txt
+ER.drawio
+data/local_settings.json
+scripts/CRUD2.py
+scripts/read_db.py
+scripts/create_db.py
