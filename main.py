@@ -2,9 +2,9 @@ import sys
 from PyQt6 import QtWidgets, QtGui
 from PyQt6.QtWidgets import QStackedWidget
 from PyQt6.QtCore import Qt
-import sqlite3
 from math import ceil
 import os
+from scripts.CRUD import *
 
 from windows.WinEdit_ActionState import WinEditActions, WinEditState
 from windows.WinEdit_BaseEcosystems import WinEditEcosystem, WinEditBase
@@ -12,6 +12,30 @@ from windows.WinEditComponents import WinEditComponents
 from windows.WinEditEfects import WinEditEfects
 
 class Ui_MainWindow(object):
+
+    def _filter_effects(self):
+        with (open_db() as cursor):
+            rare_mapping = {
+                "Обычный": "Об",
+                "Необычный": "Не",
+                "Редкий": "Ре",
+                "Очень редкий": "Ор",
+                "Легендарный": "Ле",
+                "Артефакт": "Ар"
+            }
+            component_mapping = {}
+            for data in read_all(cursor, "Components", ["Name", "Rare"]):
+                component_mapping[data[0]] = data[1]
+
+            # ('Гиацинт лекарственный', 'Свежий / целый', 'Добавить', {}, {}, 2.0, 'Восстановление', [], 'Восстановите 1d4 Хитов')
+            for data in read_all(cursor, "Effects"):
+                self.LW_all_components.addItem(
+                    f"{data[0]} [{rare_mapping[component_mapping[data[0]]]}] "
+                    f"{data[1]}{'*' if len(data[3]) > 0 else ''} "
+                    f"{data[2]}{'*' if len(data[4]) > 0 else ''}"
+                    f": [{data[6]}] {data[8]}"
+                )
+
     def _OpenNewWindow(self, WindowClass):
         """
         Всегда создаём новое окно, добавляем в стек и переключаемся на него.
@@ -40,10 +64,6 @@ class Ui_MainWindow(object):
         # Удаляем из стека
         self.stack.removeWidget(window)
         window.deleteLater()
-
-    def _CloseSecondWin(self, close_win):
-        """Старый метод, теперь можно оставить пустым или вызывать _on_window_closed"""
-        pass
 
     def _CloseSecondWin(self, close_win):
         self.stack.removeWidget(close_win)
@@ -169,7 +189,7 @@ class Ui_MainWindow(object):
         self.file_menu.addAction(self.file_menu_A_setting)
         self.file_menu.addAction(self.file_menu_A_exit)
 
-        self.A_edit_list_components = QtGui.QAction("132")
+        # self.A_edit_list_components = QtGui.QAction("132")
         # self.file_menu_A_work_data.ac
 
         self.db_menu = self.menu_bar.addMenu('Правила')
@@ -376,9 +396,7 @@ class Ui_MainWindow(object):
         self.LW_all_components.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
                                              QtWidgets.QSizePolicy.Policy.Expanding)
 
-        for i in range(100):
-            self.LW_all_components.addItem(
-                f"{str(i)} Рвоск [Об] Имельчённый Добавить: [Модификатор] Загуститель х 100 - 13 палоалоиаоилпаоилаолиоаолвиввппвовпырырыпыпдыаврдыпарррдадапдлпаваолрвапыоплаподпарлвпао")
+        self._filter_effects()
 
         self.VL_main_c.addLayout(self.HL_center)
         self.VL_main_c.addWidget(self.LW_all_components)

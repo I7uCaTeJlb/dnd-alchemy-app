@@ -229,8 +229,8 @@ class WinEditComponents(QWidget):
         self.scroll_area.setWidget(scroll_content)
 
         with open_db() as cursor:
-            self.list_ecosystems = [x[0] for x in read_all("Ecosystems", cursor)]
-            for data in read_all(self.db_table, cursor):
+            self.list_ecosystems = [x[0] for x in read_all(cursor, "Ecosystems")]
+            for data in read_all(cursor, self.db_table):
                 self._create_row(*data)
 
         controls = QHBoxLayout()

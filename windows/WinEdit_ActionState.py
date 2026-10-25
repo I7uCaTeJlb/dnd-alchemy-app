@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
                              QScrollArea, QPlainTextEdit, QMessageBox, QStackedWidget,
-                             QRadioButton, QLayout, QGridLayout, QComboBox)
+                             QRadioButton, QLayout, QGridLayout, QComboBox, QCheckBox)
 from sqlalchemy.testing.config import options
 
 from scripts.CRUD import *
@@ -41,11 +41,27 @@ class EditWin(QWidget):
             "Подтверждение",
             f"{text}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No  # Кнопка по умолчанию
+            QMessageBox.StandardButton.No
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self.delete_list.add(OldValue)
+            # Если запись существует в БД — удаляем сразу
+            if OldValue is not None:
+                try:
+                    with open_db() as cursor:
+                        delete_of_name(cursor, self.db_table, OldValue)
+                    print(f"DEBUG: Удалено из БД: {OldValue}")
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    QMessageBox.critical(
+                        self, "Ошибка удаления",
+                        f"Не удалось удалить запись из БД: {e}",
+                        QMessageBox.StandardButton.Ok
+                    )
+                    return  # Не удаляем из GUI, если не удалось удалить из БД
+
+            # Убираем из GUI
             row_widget.deleteLater()
 
     def _delete_option(self, layout: QLayout, WD_option: QWidget):
@@ -53,20 +69,22 @@ class EditWin(QWidget):
         WD_option.setParent(None)  # опционально, чтобы виджет полностью отсоединился
         WD_option.deleteLater()  # опционально, чтобы освободить память
 
-    def _fun_button_option(self, button: QPushButton, row):  # Функция для кнопки "+ опции"
+    def _fun_button_option(self, button: QPushButton, row):
         self.BTN = button
         self.ROW = row
+
+        # СНАЧАЛА очищаем старые опции
+        self._clear_layout(self.VL_additional_properies)
 
         B_options = button.property("TypeOption")
         R_options = button.property("OldValue")
 
-        if options != None:
-            for name in B_options.keys():
-                self._create_option(name, B_options[name])
+        # Используем TypeOption если есть (несохранённые изменения), иначе OldValue (из БД)
+        options_to_use = B_options if B_options is not None else R_options
 
-        if R_options != None:
-            for name in R_options.keys():
-                self._create_option(name, R_options[name])
+        if options_to_use is not None:
+            for name in options_to_use.keys():
+                self._create_option(name, options_to_use[name])
 
         self.stack.setCurrentIndex(1)
 
@@ -99,6 +117,10 @@ class EditWin(QWidget):
                                      self._delete_option(l, w))
         self.buttonX.setMaximumHeight(maxH)
         self.Layout1.addWidget(self.buttonX)
+
+        self.CH_show = QCheckBox("Отображать")
+        self.CH_show.setToolTip('Отображать в списке всех эффектов на главном окне или сократить до "*"')
+        self.Layout1.addWidget(self.CH_show)
 
         self.name = QLineEdit()  # Текстовое поле для названия действия
         self.name.setText(name)  # Заполняем его
@@ -242,7 +264,7 @@ class EditWin(QWidget):
 
         for i in range(layout.count()):
             item = layout.itemAt(i).widget().layout()  # Область опции
-            name_option = item.itemAt(0).itemAt(1).widget().text()  # Название опции
+            name_option = item.itemAt(0).itemAt(2).widget().text()  # Название опции
 
             if name_option in option_dict.keys():
                 _ = QMessageBox.information(
@@ -291,9 +313,8 @@ class EditWin(QWidget):
 
     def _save_list(self):
         NewActionList = {}
-        rows_to_sync = []  # что нужно пометить как "уже сохранено"
+        rows_to_sync = []
 
-        # Идём напрямую по scroll_layout — не лезем через stack/SА/widget()
         for i in range(self.scroll_layout.count()):
             row_widget = self.scroll_layout.itemAt(i).widget()
             if row_widget is None:
@@ -308,13 +329,10 @@ class EditWin(QWidget):
             desc = desc_edit.toPlainText()
             old_name = name_edit.property("OldValue")
 
-            # Если опции меняли и сохранили в окне опций — берём TypeOption,
-            # иначе — то, что приехало из БД
             optionals = btn.property("TypeOption")
             if optionals is None:
                 optionals = btn.property("OldValue")
 
-            # Пустая строка — игнорируем
             if not name.strip() and not desc.strip():
                 continue
 
@@ -352,24 +370,26 @@ class EditWin(QWidget):
                 NewActionList[name] = (old_name, desc, optionals)
                 rows_to_sync.append((row_widget, name, desc, optionals))
 
-        ##### СОХРАНЕНИЕ ИЗМЕНЕНИЙ В БД #####
-        with open_db() as cursor:
+        try:
+            with open_db() as cursor:
+                columns, PK, _ = get_structure_table(cursor, self.db_table)
 
-            for old_name in self.delete_list:
-                if old_name is not None:  # защита от None
-                    delete_of_name(cursor, self.db_table, old_name)
+                # Вставка/обновление (удаления уже произошли в _delete_row)
+                for name, values in NewActionList.items():
+                    upsert(cursor, self.db_table, name, values,
+                           columns=columns, primary_key=PK)
 
-            columns, PK, _ = get_structure_table(cursor, self.db_table)
-            for name, values in NewActionList.items():
-                upsert(cursor, self.db_table, name, values,
-                       columns=columns, primary_key=PK)
+                for row_widget, name, desc, optionals in rows_to_sync:
+                    self._sync_row_old_values(row_widget, name, desc, optionals)
 
-            # Только после успешной записи помечаем строки как существующие в БД
-            for row_widget, name, desc, optionals in rows_to_sync:
-                self._sync_row_old_values(row_widget, name, desc, optionals)
+            print("DEBUG: Сохранение завершено успешно")
 
-        self.delete_list.clear()  # обработано — больше не удаляем
-        # self.main_win.stack.setCurrentIndex(0)  # возврат на главный экран
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Ошибка сохранения",
+                                 f"Произошла ошибка при сохранении: {e}",
+                                 QMessageBox.StandardButton.Ok)
 
     def _init_ui(self):
         self.main_layout = QVBoxLayout(self)    # Главный макет, благодаря переданному self
@@ -391,7 +411,7 @@ class EditWin(QWidget):
         self.scroll_area.setWidget(scroll_content)
 
         with open_db() as cursor:
-            for data in read_all(self.db_table, cursor):
+            for data in read_all(cursor, self.db_table):
                 self._create_row(*data)
 
         controls = QHBoxLayout()

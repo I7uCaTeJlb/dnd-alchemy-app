@@ -79,7 +79,7 @@ def main():
 
         # --- Примеры данных ---
         if count > 0:
-            cur.execute(f"SELECT * FROM '{table}' LIMIT 3")
+            cur.execute(f"SELECT * FROM '{table}' LIMIT 30")
             rows = cur.fetchall()
 
             print(f"\n  💾 Примеры (до 3 записей):")

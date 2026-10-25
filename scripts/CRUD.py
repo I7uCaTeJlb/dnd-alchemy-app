@@ -1,6 +1,7 @@
 import sqlite3
 from contextlib import contextmanager
 from json import dumps, loads
+from typing import Optional
 
 from sqlalchemy.engine import cursor
 
@@ -19,11 +20,17 @@ def open_db(database: str = db_path):               # Контекстный м�
         connection.commit()
         connection.close()
 
+def first_filling_list():
+    pass
 
-from json import loads
+def read_all(cursor, table: str, columns: Optional[list] = None):
+    if columns is None:
+        cursor.execute(f"SELECT * FROM {table}")
+    else:
+        data = ", ".join(f'"{col}"' for col in columns)
 
-def read_all(table: str, cursor):
-    cursor.execute(f"SELECT * FROM {table}")
+        cursor.execute(f"SELECT {data} FROM {table}")
+
     result = []
 
     for data in cursor.fetchall():
@@ -46,7 +53,6 @@ def read_all(table: str, cursor):
         result.append(tuple(parsed_data))
 
     return result
-
 
 def delete_of_name(cursor, table: str, name):
     if isinstance(name, str):

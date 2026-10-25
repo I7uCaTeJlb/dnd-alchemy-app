@@ -162,7 +162,7 @@ class EditWin(QWidget):
         self.scroll_area.setWidget(scroll_content)
 
         with open_db() as cursor:
-            for data in read_all(self.db_table, cursor):
+            for data in read_all(cursor, self.db_table):
                 self._create_row(*data)
 
         controls = QHBoxLayout()

@@ -8,6 +8,23 @@ from scripts.CRUD import *
 from MyWidgets.CustomDropdown import CustomDropdown
 
 
+def get_options_from_db(cursor, table: str, name: str):
+    """Получить актуальную структуру опций из справочника (State/Actions).
+    Формат: {'название': ['тип', 'источник']}"""
+    cursor.execute(f'SELECT * FROM "{table}" WHERE "name" = ?', (name,))
+    row = cursor.fetchone()
+    if row and len(row) > 2 and row[2] is not None:
+        options = row[2]
+        if isinstance(options, str):
+            try:
+                options = json.loads(options)
+            except Exception:
+                return None
+        if isinstance(options, dict):
+            return options
+    return None
+
+
 def read_effects(cursor):
     """Чтение таблицы Effects с явным порядком колонок."""
     cursor.execute("""
@@ -34,6 +51,36 @@ def read_effects(cursor):
     return result
 
 
+def normalize_options(options):
+    """Нормализует опции в формат {'name': ['type', 'value']}.
+    Поддерживает старые форматы:
+    - {'name': {'type': ..., 'source': ..., 'value': ...}}
+    - {'name': ['type', 'source']} (без значения)
+    - {'name': 'value'} (просто значение)
+    """
+    if not isinstance(options, dict):
+        return {}
+
+    normalized = {}
+    for name, val in options.items():
+        if isinstance(val, dict) and "type" in val:
+            # Формат {'type': ..., 'source': ..., 'value': ...}
+            opt_type = val.get("type", "text")
+            opt_value = val.get("value", "")
+            normalized[name] = [opt_type, opt_value]
+        elif isinstance(val, (list, tuple)) and len(val) >= 2:
+            # Формат ['type', 'value'] - оставляем как есть
+            normalized[name] = [val[0], val[1]]
+        elif isinstance(val, (list, tuple)) and len(val) == 1:
+            # Формат ['type'] - без значения
+            normalized[name] = [val[0], ""]
+        else:
+            # Просто значение
+            normalized[name] = ["text", val]
+
+    return normalized
+
+
 class WinEditEfects(QWidget):
     closed = pyqtSignal()
 
@@ -55,7 +102,6 @@ class WinEditEfects(QWidget):
         state = row_widget.layout().itemAt(3).widget().property("OldValue")
         action = row_widget.layout().itemAt(6).widget().property("OldValue")
 
-        # Получаем опции из OldOptions (JSON-строки)
         state_options_str = row_widget.layout().itemAt(3).widget().property("OldOptions")
         action_options_str = row_widget.layout().itemAt(6).widget().property("OldOptions")
 
@@ -73,7 +119,6 @@ class WinEditEfects(QWidget):
             except Exception:
                 action_options = {}
 
-        # Если запись ещё не в БД — просто спрашиваем про пустую строку
         if component is None or state is None or action is None:
             if not desc or desc.isspace():
                 self._remove_row(row_widget)
@@ -92,16 +137,11 @@ class WinEditEfects(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            # Если запись существует в БД — удаляем сразу
             if component is not None and state is not None and action is not None:
                 try:
-                    # Получаем правильный порядок PK из структуры таблицы
                     with open_db() as temp_cursor:
                         _, PK_list, _ = get_structure_table(temp_cursor, self.db_table)
 
-                    print(f"DEBUG: PK_list = {PK_list}")
-
-                    # Формируем old_pk в ПРАВИЛЬНОМ порядке PK_list
                     pk_dict = {
                         'name': component,
                         'state': state,
@@ -111,13 +151,9 @@ class WinEditEfects(QWidget):
                     }
                     old_pk = tuple(pk_dict[col] for col in PK_list)
 
-                    print(f"DEBUG: old_pk = {old_pk}")
-
                     with open_db() as cursor:
                         delete_of_name(cursor, self.db_table, old_pk)
-                    print(f"DEBUG: Удалено из БД: {old_pk}")
                 except Exception as e:
-                    print(f"ERROR при удалении из БД: {e}")
                     import traceback
                     traceback.print_exc()
                     QMessageBox.critical(
@@ -125,9 +161,8 @@ class WinEditEfects(QWidget):
                         f"Не удалось удалить запись из БД: {e}",
                         QMessageBox.StandardButton.Ok
                     )
-                    return  # Не удаляем из GUI, если не удалось удалить из БД
+                    return
 
-            # Убираем из GUI
             self._remove_row(row_widget)
 
     def _remove_row(self, row_widget):
@@ -182,12 +217,10 @@ class WinEditEfects(QWidget):
                 widget = cloned_layout.itemAt(i).widget()
                 if hasattr(widget, 'setProperty'):
                     widget.setProperty("OldValue", None)
-            # Сбрасываем OldOptions у клонов
             cloned_state_cb.setProperty("OldOptions", "{}")
             cloned_action_cb.setProperty("OldOptions", "{}")
 
         except Exception as e:
-            print(f"ERROR in _clone_row: {e}")
             import traceback
             traceback.print_exc()
 
@@ -195,8 +228,6 @@ class WinEditEfects(QWidget):
                     cost=None, action=None, action_options=None,
                     MT=None, AT=None, desc=None):
         try:
-            print(f"DEBUG _create_row START: component={component}, state={state}, action={action}")
-
             maxH = 40
 
             self.WD_row = QWidget()
@@ -211,8 +242,6 @@ class WinEditEfects(QWidget):
             self.buttonClone.setMaximumHeight(maxH)
             self.buttonClone.clicked.connect(lambda *args, btn=self.buttonClone: self._clone_row(btn))
             self.HV_row.addWidget(self.buttonClone)
-
-            print("DEBUG: buttons created")
 
             # === КОМПОНЕНТЫ ===
             self.CB_components = QComboBox()
@@ -245,8 +274,6 @@ class WinEditEfects(QWidget):
             self.CB_components.setMaximumWidth(200)
             self.HV_row.addWidget(self.CB_components)
 
-            print("DEBUG: components combobox created")
-
             # === СОСТОЯНИЯ ===
             self.CB_states = QComboBox()
             for i in range(len(self.states)):
@@ -254,8 +281,6 @@ class WinEditEfects(QWidget):
                 state_name = state_data[0]
                 state_desc = state_data[1]
                 state_optional = state_data[2] if len(state_data) > 2 else None
-
-                print(f"DEBUG: adding state '{state_name}' with optional={state_optional} (type={type(state_optional)})")
 
                 if state_optional is None:
                     self.CB_states.addItem(state_name, userData=None)
@@ -266,8 +291,6 @@ class WinEditEfects(QWidget):
             self.CB_states.setMaximumHeight(maxH)
             self.CB_states.setMaximumWidth(200)
             self.HV_row.addWidget(self.CB_states)
-
-            print("DEBUG: states combobox created")
 
             self.B_edit_state_options = QPushButton("Опции")
             self.B_edit_state_options.setMaximumHeight(maxH)
@@ -282,8 +305,6 @@ class WinEditEfects(QWidget):
                 self._toggle_options_button(btn, cb)
             )
 
-            print("DEBUG: state options button created")
-
             # === СТОИМОСТЬ ===
             regex = QRegularExpression(r"^[0-9]+(\.[0-9]+)?$")
             validator = QRegularExpressionValidator(regex)
@@ -295,8 +316,6 @@ class WinEditEfects(QWidget):
             self.cost.setValidator(validator)
             self.HV_row.addWidget(self.cost)
 
-            print("DEBUG: cost field created")
-
             # === ДЕЙСТВИЯ ===
             self.CB_actions = QComboBox()
             for i in range(len(self.actions)):
@@ -305,16 +324,12 @@ class WinEditEfects(QWidget):
                 action_desc = action_data[1]
                 action_optional = action_data[2] if len(action_data) > 2 else None
 
-                print(f"DEBUG: adding action '{action_name}' with optional={action_optional} (type={type(action_optional)})")
-
                 self.CB_actions.addItem(action_name, userData=action_optional)
                 self.CB_actions.setItemData(i, action_desc, Qt.ItemDataRole.ToolTipRole)
 
             self.CB_actions.setMaximumHeight(maxH)
             self.CB_actions.setMaximumWidth(200)
             self.HV_row.addWidget(self.CB_actions)
-
-            print("DEBUG: actions combobox created")
 
             self.B_edit_action_options = QPushButton("Опции")
             self.B_edit_action_options.setMaximumHeight(maxH)
@@ -329,8 +344,6 @@ class WinEditEfects(QWidget):
                 self._toggle_options_button(btn, cb)
             )
 
-            print("DEBUG: action options button created")
-
             # === ТЕГИ ===
             self.CB_MTags = QComboBox()
             self.CB_MTags.addItems(self.MTags)
@@ -341,8 +354,6 @@ class WinEditEfects(QWidget):
             self.CB_ATags = CustomDropdown("Доп. эффект", self.ATags)
             self.HV_row.addWidget(self.CB_ATags)
 
-            print("DEBUG: tags created")
-
             # === ОПИСАНИЕ ===
             self.desc = QPlainTextEdit()
             self.desc.setMaximumHeight(maxH)
@@ -350,8 +361,6 @@ class WinEditEfects(QWidget):
 
             self.WD_row.setLayout(self.HV_row)
             self.scroll_layout.addWidget(self.WD_row)
-
-            print("DEBUG: row widget added to layout")
 
             # === УСТАНОВКА ЗНАЧЕНИЙ ===
 
@@ -365,15 +374,13 @@ class WinEditEfects(QWidget):
             else:
                 self.CB_components.setProperty("OldValue", None)
 
-            print("DEBUG: component value set")
-
             # Состояние
             if state is not None:
                 idx = self.CB_states.findText(state)
-                print(f"DEBUG: found state '{state}' at index {idx}")
                 if idx != -1:
                     self.CB_states.setCurrentIndex(idx)
                     self.CB_states.setProperty("OldValue", state)
+
                     if state_options is None:
                         state_options = {}
                     elif isinstance(state_options, str):
@@ -383,10 +390,12 @@ class WinEditEfects(QWidget):
                                 state_options = {}
                         except Exception:
                             state_options = {}
-                    if isinstance(state_options, dict):
-                        print(f"DEBUG: setting state options userData at index {idx}: {state_options}")
+
+                    # Нормализуем опции в формат {'name': ['type', 'value']}
+                    state_options = normalize_options(state_options)
+
+                    if state_options:
                         self.CB_states.setItemData(idx, state_options)
-                        print(f"DEBUG: setting OldOptions property: {json.dumps(state_options, ensure_ascii=False)}")
                         self.CB_states.setProperty("OldOptions", json.dumps(state_options, ensure_ascii=False))
                     else:
                         self.CB_states.setProperty("OldOptions", "{}")
@@ -398,8 +407,6 @@ class WinEditEfects(QWidget):
                 self.CB_states.setProperty("OldValue", None)
                 self.CB_states.setProperty("OldOptions", "{}")
 
-            print("DEBUG: state value set")
-
             # Стоимость
             if cost is not None:
                 self.cost.setText(str(cost))
@@ -407,15 +414,13 @@ class WinEditEfects(QWidget):
             else:
                 self.cost.setProperty("OldValue", None)
 
-            print("DEBUG: cost value set")
-
             # Действие
             if action is not None:
                 idx = self.CB_actions.findText(action)
-                print(f"DEBUG: found action '{action}' at index {idx}")
                 if idx != -1:
                     self.CB_actions.setCurrentIndex(idx)
                     self.CB_actions.setProperty("OldValue", action)
+
                     if action_options is None:
                         action_options = {}
                     elif isinstance(action_options, str):
@@ -425,10 +430,12 @@ class WinEditEfects(QWidget):
                                 action_options = {}
                         except Exception:
                             action_options = {}
-                    if isinstance(action_options, dict):
-                        print(f"DEBUG: setting action options userData at index {idx}: {action_options}")
+
+                    # Нормализуем опции в формат {'name': ['type', 'value']}
+                    action_options = normalize_options(action_options)
+
+                    if action_options:
                         self.CB_actions.setItemData(idx, action_options)
-                        print(f"DEBUG: setting OldOptions property: {json.dumps(action_options, ensure_ascii=False)}")
                         self.CB_actions.setProperty("OldOptions", json.dumps(action_options, ensure_ascii=False))
                     else:
                         self.CB_actions.setProperty("OldOptions", "{}")
@@ -440,16 +447,12 @@ class WinEditEfects(QWidget):
                 self.CB_actions.setProperty("OldValue", None)
                 self.CB_actions.setProperty("OldOptions", "{}")
 
-            print("DEBUG: action value set")
-
             # Основной тег
             if MT is not None:
                 self.CB_MTags.setCurrentText(MT)
                 self.CB_MTags.setProperty("OldValue", MT)
             else:
                 self.CB_MTags.setProperty("OldValue", None)
-
-            print("DEBUG: main tag set")
 
             # Дополнительный тег
             if AT is not None:
@@ -459,14 +462,11 @@ class WinEditEfects(QWidget):
                     except Exception:
                         AT = []
                 if isinstance(AT, list):
-                    print(f"DEBUG: setting AT checks: {AT}")
                     self.CB_ATags.setChecks(AT)
-                print(f"DEBUG: setting AT OldValue: {json.dumps(AT if isinstance(AT, list) else [], ensure_ascii=False)}")
-                self.CB_ATags.setProperty("OldValue", json.dumps(AT if isinstance(AT, list) else [], ensure_ascii=False))
+                self.CB_ATags.setProperty("OldValue",
+                                          json.dumps(AT if isinstance(AT, list) else [], ensure_ascii=False))
             else:
                 self.CB_ATags.setProperty("OldValue", "[]")
-
-            print("DEBUG: additional tag set")
 
             # Описание
             if desc is not None:
@@ -475,15 +475,10 @@ class WinEditEfects(QWidget):
             else:
                 self.desc.setProperty("OldValue", None)
 
-            print("DEBUG: description set")
-
             self._toggle_options_button(self.B_edit_state_options, self.CB_states)
             self._toggle_options_button(self.B_edit_action_options, self.CB_actions)
 
-            print("DEBUG _create_row END")
-
         except Exception as e:
-            print(f"ERROR in _create_row: {e}")
             import traceback
             traceback.print_exc()
             raise
@@ -496,50 +491,77 @@ class WinEditEfects(QWidget):
             button.hide()
 
     def _open_options_editor(self, source_type, combobox):
+        """Открывает редактор опций.
+        Структура опций берётся из БД (State/Actions), значения — из OldOptions."""
         try:
             self.current_options_source = source_type
             self.current_options_combobox = combobox
 
-            options_data = combobox.currentData()
+            selected_text = combobox.currentText()
 
             if source_type == "state":
                 title = "Редактирование опций состояния"
+                table_name = "State"
             else:
                 title = "Редактирование опций действия"
+                table_name = "Actions"
+
+            # Получаем структуру опций из справочника
+            with open_db() as cursor:
+                options_structure = get_options_from_db(cursor, table_name, selected_text)
+
+            # Получаем сохранённые значения из OldOptions
+            old_options_str = combobox.property("OldOptions")
+            saved_values = {}
+            if old_options_str:
+                try:
+                    saved_values = json.loads(old_options_str)
+                except Exception:
+                    saved_values = {}
 
             self.L_options_title.setText(title)
 
+            # Очищаем старые виджеты
             self._clear_layout(self.scroll_layout_options)
             self.current_options_widgets = {}
 
-            if options_data is not None and isinstance(options_data, dict):
-                for name, data in options_data.items():
-                    self._create_option_widget(name, data)
+            # Создаём виджеты на основе структуры из справочника
+            if options_structure is not None and isinstance(options_structure, dict):
+                for name, struct_data in options_structure.items():
+                    # struct_data может быть ['type', 'source'] или просто 'type'
+                    if isinstance(struct_data, (list, tuple)) and len(struct_data) >= 2:
+                        opt_type = struct_data[0]
+                        opt_source = struct_data[1]
+                    elif isinstance(struct_data, (list, tuple)) and len(struct_data) == 1:
+                        opt_type = struct_data[0]
+                        opt_source = None
+                    elif isinstance(struct_data, str):
+                        opt_type = struct_data
+                        opt_source = None
+                    else:
+                        continue
+
+                    # Ищем сохранённое значение
+                    current_value = ""
+                    if name in saved_values:
+                        val_data = saved_values[name]
+                        if isinstance(val_data, (list, tuple)) and len(val_data) >= 2:
+                            current_value = val_data[1]
+                        elif isinstance(val_data, (list, tuple)) and len(val_data) == 1:
+                            current_value = val_data[0]
+                        else:
+                            current_value = val_data
+
+                    self._create_option_widget_simple(name, opt_type, opt_source, current_value)
 
             self.stack.setCurrentIndex(1)
 
         except Exception as e:
-            print(f"ERROR in _open_options_editor: {e}")
             import traceback
             traceback.print_exc()
 
-    def _create_option_widget(self, name, option_data):
-        if isinstance(option_data, dict):
-            option_type = option_data.get("type", "text")
-            option_value = option_data.get("source")
-            saved_value = option_data.get("value")
-        else:
-            option_type = option_data[0]
-            option_value = option_data[1]
-            saved_value = None
-
-        table_mapping = {
-            "Состояния": "State",
-            "Действия": "Actions",
-            "База": "Base",
-            "Экосистемы": "Ecosystems"
-        }
-
+    def _create_option_widget_simple(self, name, opt_type, opt_source, current_value):
+        """Создаёт виджет для редактирования одной опции."""
         row_widget = QWidget()
         row_layout = QHBoxLayout(row_widget)
         row_layout.setContentsMargins(5, 5, 5, 5)
@@ -548,60 +570,63 @@ class WinEditEfects(QWidget):
         label.setMinimumWidth(150)
         row_layout.addWidget(label)
 
-        if option_type == "text":
+        widget = None
+
+        table_mapping = {
+            "Состояния": "State",
+            "Действия": "Actions",
+            "База": "Base",
+            "Экосистемы": "Ecosystems"
+        }
+
+        if opt_type == "text":
             widget = QLineEdit()
             widget.setPlaceholderText("Введите значение")
-            if saved_value:
-                widget.setText(str(saved_value))
-            row_layout.addWidget(widget)
-            self.current_options_widgets[name] = widget
+            if current_value is not None:
+                widget.setText(str(current_value))
 
-        elif option_type == "combobox":
+        elif opt_type == "combobox":
             widget = QComboBox()
+            items = []
+            if opt_source:
+                if "," in str(opt_source):
+                    items = [x.strip() for x in str(opt_source).split(",")]
+                else:
+                    t_name = table_mapping.get(opt_source, opt_source)
+                    try:
+                        with open_db() as c:
+                            data = read_all(c, t_name)
+                            items = [row[0] for row in data]
+                    except Exception:
+                        items = []
+            widget.addItems(items)
+            if current_value:
+                idx = widget.findText(str(current_value))
+                if idx != -1:
+                    widget.setCurrentIndex(idx)
 
-            if option_value is not None and "," in str(option_value):
-                items = [x.strip() for x in option_value.split(",")]
-                widget.addItems(items)
-            else:
-                table_name = table_mapping.get(option_value, option_value)
-                try:
-                    with open_db() as cursor:
-                        data = read_all(table_name, cursor)
-                        items = [row[0] for row in data]
-                        widget.addItems(items)
-                except Exception as e:
-                    print(f"DEBUG: Не удалось прочитать таблицу '{table_name}': {e}")
-                    widget.addItem("(нет данных)")
-
-            if saved_value:
-                index = widget.findText(str(saved_value))
-                if index != -1:
-                    widget.setCurrentIndex(index)
-
-            row_layout.addWidget(widget)
-            self.current_options_widgets[name] = widget
-
-        elif option_type == "multiselect":
-            if option_value is not None and "," in str(option_value):
-                items = [x.strip() for x in option_value.split(",")]
-            else:
-                table_name = table_mapping.get(option_value, option_value)
-                try:
-                    with open_db() as cursor:
-                        data = read_all(table_name, cursor)
-                        items = [row[0] for row in data]
-                except Exception as e:
-                    print(f"DEBUG: Не удалось прочитать таблицу '{table_name}': {e}")
-                    items = []
-
+        elif opt_type == "multiselect":
+            items = []
+            if opt_source:
+                if "," in str(opt_source):
+                    items = [x.strip() for x in str(opt_source).split(",")]
+                else:
+                    t_name = table_mapping.get(opt_source, opt_source)
+                    try:
+                        with open_db() as c:
+                            data = read_all(c, t_name)
+                            items = [row[0] for row in data]
+                    except Exception:
+                        items = []
             widget = CustomDropdown(name, items)
+            if current_value:
+                if isinstance(current_value, list):
+                    widget.setChecks(current_value)
+                elif isinstance(current_value, str) and current_value:
+                    widget.setChecks([current_value])
 
-            if saved_value:
-                if isinstance(saved_value, list):
-                    widget.setChecks(saved_value)
-                elif isinstance(saved_value, str) and saved_value:
-                    widget.setChecks([saved_value])
-
+        if widget:
+            widget.setProperty("OptionType", opt_type)
             row_layout.addWidget(widget)
             self.current_options_widgets[name] = widget
 
@@ -609,44 +634,34 @@ class WinEditEfects(QWidget):
         self.scroll_layout_options.addWidget(row_widget)
 
     def _save_options(self):
+        """Сохраняет опции в формат {'name': ['type', 'value']}."""
         try:
             collected_data = {}
 
             for name, widget in self.current_options_widgets.items():
+                opt_type = widget.property("OptionType") or "text"
+                val = None
+
                 if isinstance(widget, QLineEdit):
-                    collected_data[name] = widget.text()
+                    val = widget.text()
                 elif isinstance(widget, QComboBox):
-                    collected_data[name] = widget.currentText()
+                    val = widget.currentText()
                 elif isinstance(widget, CustomDropdown):
-                    collected_data[name] = widget.getSelectedItems()
+                    val = widget.getSelectedItems()
+
+                collected_data[name] = [opt_type, val]
 
             combobox = self.current_options_combobox
-            old_user_data = combobox.currentData()
 
-            new_user_data = {}
-            if old_user_data and isinstance(old_user_data, dict):
-                for name, option_structure in old_user_data.items():
-                    if isinstance(option_structure, dict):
-                        option_type = option_structure.get("type", "text")
-                        option_source = option_structure.get("source")
-                    else:
-                        option_type = option_structure[0]
-                        option_source = option_structure[1]
+            # Обновляем userData комбобокса
+            combobox.setItemData(combobox.currentIndex(), collected_data)
 
-                    value = collected_data.get(name, "")
-                    new_user_data[name] = {
-                        "type": option_type,
-                        "source": option_source,
-                        "value": value
-                    }
-
-            current_index = combobox.currentIndex()
-            combobox.setItemData(current_index, new_user_data)
+            # Обновляем OldOptions (JSON-строка)
+            combobox.setProperty("OldOptions", json.dumps(collected_data, ensure_ascii=False))
 
             self.stack.setCurrentIndex(0)
 
         except Exception as e:
-            print(f"ERROR in _save_options: {e}")
             import traceback
             traceback.print_exc()
 
@@ -664,7 +679,7 @@ class WinEditEfects(QWidget):
                     self._clear_layout(child_layout)
 
     def _save_list(self):
-        """Сохраняет только изменения и новые записи. Удаления уже произошли сразу через _delete_row."""
+        """Сохраняет только изменения и новые записи."""
         NewActionList = {}
         rows_to_sync = []
 
@@ -698,7 +713,6 @@ class WinEditEfects(QWidget):
             old_Mtag = row.itemAt(8).widget().property("OldValue")
             old_desc = row.itemAt(10).widget().property("OldValue")
 
-            # OldValue для AT — это JSON-строка, парсим её
             old_Atag_str = row.itemAt(9).widget().property("OldValue")
             old_Atag = []
             if old_Atag_str:
@@ -709,7 +723,6 @@ class WinEditEfects(QWidget):
             if not isinstance(old_Atag, list):
                 old_Atag = []
 
-            # Старые опции из OldOptions (JSON-строки)
             old_state_options_str = row.itemAt(3).widget().property("OldOptions")
             old_action_options_str = row.itemAt(6).widget().property("OldOptions")
 
@@ -727,7 +740,6 @@ class WinEditEfects(QWidget):
                 except Exception:
                     old_action_options = {}
 
-            # Проверки заполненности
             if not component or not component.strip():
                 QMessageBox.information(self, "Заполните поле", "Выберите компонент!", QMessageBox.StandardButton.Ok)
                 self.scroll_area.ensureWidgetVisible(row_widget)
@@ -815,12 +827,10 @@ class WinEditEfects(QWidget):
             with open_db() as cursor:
                 columns, PK, _ = get_structure_table(cursor, self.db_table)
 
-                # Вставка/обновление
                 for pk_db, (old_pk_db, values) in NewActionList.items():
                     upsert(cursor, self.db_table, pk_db, (old_pk_db, *values),
                            columns=columns, primary_key=PK)
 
-                # Синхронизация OldValue и OldOptions
                 for row_widget, component, state, state_options, cost, action, action_options, Mtag, Atag, desc in rows_to_sync:
                     row = row_widget.layout()
                     row.itemAt(2).widget().setProperty("OldValue", component)
@@ -828,20 +838,15 @@ class WinEditEfects(QWidget):
                     row.itemAt(5).widget().setProperty("OldValue", cost)
                     row.itemAt(6).widget().setProperty("OldValue", action)
                     row.itemAt(8).widget().setProperty("OldValue", Mtag)
-                    # AT — список, храним как JSON-строку
                     row.itemAt(9).widget().setProperty("OldValue", json.dumps(Atag if isinstance(Atag, list) else [],
                                                                               ensure_ascii=False))
                     row.itemAt(10).widget().setProperty("OldValue", desc)
-                    # Сохраняем опции как JSON-строки в OldOptions
                     row.itemAt(3).widget().setProperty("OldOptions", json.dumps(state_options, ensure_ascii=False))
                     row.itemAt(6).widget().setProperty("OldOptions", json.dumps(action_options, ensure_ascii=False))
                     row.itemAt(3).widget().setItemData(row.itemAt(3).widget().currentIndex(), state_options)
                     row.itemAt(6).widget().setItemData(row.itemAt(6).widget().currentIndex(), action_options)
 
-            print("DEBUG: Сохранение завершено успешно")
-
         except Exception as e:
-            print(f"КРИТИЧЕСКАЯ ОШИБКА: {e}")
             import traceback
             traceback.print_exc()
             QMessageBox.critical(self, "Ошибка сохранения",
@@ -852,7 +857,6 @@ class WinEditEfects(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.stack = QStackedWidget()
 
-        # ★★★ Определяем списки ДО загрузки данных ★★★
         self.MTags = ["Токсин", "Умение", "Усиление", "Ослабление", "Модификатор", "Восстановление"]
         self.ATags = ["Загуститель", "Растворитель", "Стабилизатор", "Возмутитель", "Усилитель", "Потеря"]
 
@@ -866,16 +870,12 @@ class WinEditEfects(QWidget):
         self.scroll_area.setWidget(scroll_content)
 
         with open_db() as cursor:
-            self.components = read_all("Components", cursor)
-            self.states = read_all("State", cursor)
-            self.actions = read_all("Actions", cursor)
+            self.components = read_all(cursor, "Components")
+            self.states = read_all(cursor, "State")
+            self.actions = read_all(cursor, "Actions")
 
             effects_data = read_effects(cursor)
             for data in effects_data:
-                print(f"DEBUG loading: {data}")
-
-                # Правильный порядок: name(0), state(1), action(2), state_options(3),
-                # action_options(4), cost(5), main_tag(6), additional_tag(7), effect(8)
                 component = data[0] if len(data) > 0 else None
                 state = data[1] if len(data) > 1 else None
                 action = data[2] if len(data) > 2 else None
@@ -886,7 +886,6 @@ class WinEditEfects(QWidget):
                 AT = data[7] if len(data) > 7 else None
                 desc = data[8] if len(data) > 8 else None
 
-                # Надёжный парсинг
                 if isinstance(state_options, str):
                     try:
                         state_options = json.loads(state_options)
@@ -910,10 +909,6 @@ class WinEditEfects(QWidget):
                         AT = []
                 if not isinstance(AT, list):
                     AT = []
-
-                print(f"DEBUG parsed: component={component}, state={state}, action={action}, "
-                      f"cost={cost}, state_options={state_options}, action_options={action_options}, "
-                      f"MT={MT}, AT={AT}, desc={desc}")
 
                 self._create_row(
                     component=component,
@@ -961,13 +956,11 @@ class WinEditEfects(QWidget):
 
         controls_options = QHBoxLayout()
 
-        self.B_NewOption = QPushButton("Создать новое")
         self.B_SaveOption = QPushButton("Сохранить изменения")
         self.B_SaveOption.clicked.connect(self._save_options)
         self.B_CloseOption = QPushButton("Отмена | Выход")
         self.B_CloseOption.clicked.connect(lambda: self.stack.setCurrentIndex(0))
 
-        controls_options.addWidget(self.B_NewOption)
         controls_options.addWidget(self.B_SaveOption)
         controls_options.addWidget(self.B_CloseOption)
 
