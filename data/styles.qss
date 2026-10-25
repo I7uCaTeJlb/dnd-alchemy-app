@@ -1,0 +1,387 @@
+/* ============================================
+   AlchemistHelper — Fantasy Theme
+   ============================================ */
+
+/* === GENERAL SETTINGS === */
+QWidget {
+    font-family: 'Segoe UI', 'Roboto', 'Open Sans', sans-serif;
+    font-size: 12px;
+    color: #3e2723;
+    background-color: #f5f0e8;
+}
+
+QMainWindow {
+    background-color: #f5f0e8;
+}
+
+/* === MENU BAR === */
+QMenuBar {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 11px;
+    background-color: #4e342e;
+    color: #f5f5dc;
+    border-bottom: 2px solid #8b7355;
+    padding: 2px;
+}
+
+QMenuBar::item {
+    padding: 5px 12px;
+    border-radius: 3px;
+}
+
+QMenuBar::item:selected {
+    background-color: #6d4c41;
+}
+
+QMenu {
+    background-color: #efebe9;
+    border: 1px solid #8b7355;
+    border-radius: 3px;
+    padding: 4px 0px;
+}
+
+QMenu::item {
+    padding: 6px 30px 6px 20px;
+}
+
+QMenu::item:selected {
+    background-color: #d7ccc8;
+    color: #3e2723;
+}
+
+/* === GROUP BOX === */
+QGroupBox {
+    font-family: 'Cinzel', 'Georgia', serif;
+    font-weight: bold;
+    font-size: 13px;
+    border: 2px solid #8b7355;
+    border-radius: 6px;
+    margin-top: 14px;
+    background-color: #faf6ef;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 8px;
+    color: #4e342e;
+    background-color: #faf6ef;
+}
+
+/* === BUTTONS === */
+QPushButton {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    background-color: #5d4037;
+    color: #f5f5dc;
+    border: 1px solid #3e2723;
+    border-radius: 4px;
+    padding: 6px 14px;
+    min-height: 20px;
+}
+
+QPushButton:hover {
+    background-color: #6d4c41;
+    border-color: #8b7355;
+}
+
+QPushButton:pressed {
+    background-color: #3e2723;
+}
+
+QPushButton:disabled {
+    background-color: #a1887f;
+    color: #d7ccc8;
+    border-color: #bcaaa4;
+}
+
+/* === CHECKBOX === */
+QCheckBox {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    spacing: 8px;
+    color: #3e2723;
+    padding: 3px 0px;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #8b7355;
+    border-radius: 3px;
+    background-color: #fdfbf7;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #5d4037;
+    background-color: #f5f0e8;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #5d4037;
+    border-color: #3e2723;
+    image: none;
+}
+
+/* === RADIO BUTTON === */
+QRadioButton {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    spacing: 8px;
+    color: #3e2723;
+    padding: 3px 0px;
+}
+
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #8b7355;
+    border-radius: 10px;
+    background-color: #fdfbf7;
+}
+
+QRadioButton::indicator:hover {
+    border-color: #5d4037;
+    background-color: #f5f0e8;
+}
+
+QRadioButton::indicator:checked {
+    background-color: #5d4037;
+    border-color: #3e2723;
+}
+
+/* === COMBO BOX === */
+QComboBox {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    background-color: #fdfbf7;
+    border: 1px solid #8b7355;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #3e2723;
+    min-height: 22px;
+}
+
+QComboBox:hover {
+    border-color: #5d4037;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #5d4037;
+    margin-right: 6px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #fdfbf7;
+    border: 1px solid #8b7355;
+    selection-background-color: #d7ccc8;
+    selection-color: #3e2723;
+}
+
+/* === SCROLL AREA === */
+QScrollArea {
+    border: 1px solid #8b7355;
+    border-radius: 4px;
+    background-color: #faf6ef;
+}
+
+/* === SCROLL BAR === */
+QScrollBar:vertical {
+    background-color: transparent;
+    width: 12px;
+    border-radius: 6px;
+    margin: 0px;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #a1887f;
+    border-radius: 6px;
+    min-height: 30px;
+    border: none;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #8d6e63;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+    border: none;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background-color: transparent;
+    border: none;
+}
+
+QScrollBar:horizontal {
+    background-color: transparent;
+    height: 12px;
+    border-radius: 6px;
+    border: none;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #a1887f;
+    border-radius: 6px;
+    min-width: 30px;
+    border: none;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #8d6e63;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0px;
+    border: none;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background-color: transparent;
+    border: none;
+}
+
+/* === LIST WIDGET === */
+QListWidget {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    background-color: #fdfbf7;
+    border: 1px solid #8b7355;
+    border-radius: 4px;
+    color: #3e2723;
+    outline: none;
+}
+
+QListWidget::item {
+    padding: 4px 8px;
+    border-bottom: 1px solid #e8e0d4;
+}
+
+QListWidget::item:hover {
+    background-color: #f0e8d8;
+}
+
+QListWidget::item:selected {
+    background-color: #d7ccc8;
+    color: #3e2723;
+    border-left: 3px solid #5d4037;
+}
+
+/* === TREE WIDGET === */
+QTreeWidget {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    background-color: #fdfbf7;
+    border: 1px solid #8b7355;
+    border-radius: 4px;
+    color: #3e2723;
+    outline: none;
+}
+
+QTreeWidget::item {
+    padding: 4px 0px;
+    border-bottom: 1px solid #e8e0d4;
+}
+
+QTreeWidget::item:hover {
+    background-color: #f0e8d8;
+}
+
+QTreeWidget::item:selected {
+    background-color: #d7ccc8;
+    color: #3e2723;
+}
+
+QHeaderView::section {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: bold;
+    background-color: #5d4037;
+    color: #f5f5dc;
+    padding: 6px 8px;
+    border: none;
+    border-right: 1px solid #4e342e;
+}
+
+/* === TEXT EDIT === */
+QTextEdit {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    background-color: #fdfbf7;
+    border: 1px solid #8b7355;
+    border-radius: 4px;
+    color: #3e2723;
+    padding: 6px;
+    selection-background-color: #bcaaa4;
+}
+
+QTextEdit:focus {
+    border-color: #5d4037;
+}
+
+/* === LABEL === */
+QLabel {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    color: #3e2723;
+    background-color: transparent;
+}
+
+/* === LINE EDIT === */
+QLineEdit {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12px;
+    background-color: #fdfbf7;
+    border: 1px solid #8b7355;
+    border-radius: 4px;
+    padding: 5px 8px;
+    color: #3e2723;
+}
+
+QLineEdit:focus {
+    border-color: #5d4037;
+}
+
+/* === SPLITTER === */
+QSplitter::handle {
+    background-color: #8b7355;
+}
+
+QSplitter::handle:horizontal {
+    width: 3px;
+}
+
+QSplitter::handle:vertical {
+    height: 3px;
+}
+
+/* === TOOLTIP === */
+QToolTip {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 11px;
+    background-color: #4e342e;
+    color: #f5f5dc;
+    border: 1px solid #8b7355;
+    border-radius: 3px;
+    padding: 4px 8px;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #8b7355;
+    margin: 4px 10px;
+}
