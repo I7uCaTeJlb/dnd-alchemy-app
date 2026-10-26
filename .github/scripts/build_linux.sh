@@ -1,10 +1,12 @@
 #!/bin/bash
 # Сборка для Linux
+set -e  # <-- ВАЖНО: немедленно прерывать скрипт при любой ошибке
+
 echo "Starting Linux build..."
 
 # Параметры PyInstaller для Linux:
 # --onefile: один исполняемый файл
-# --add-data: формат "источник:назначение"
+# --add-data: формат "источник:назначение" (в Linux используется двоеточие)
 
 pyinstaller --noconfirm \
     --onefile \
