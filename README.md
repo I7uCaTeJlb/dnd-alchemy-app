@@ -5,7 +5,6 @@
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.11-green?logo=qt)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
-![CI/CD](https://github.com/l7uCaTeJlb/dnd-alchemy-app/actions/workflows/build.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/l7uCaTeJlb/dnd-alchemy-app?label=latest%20release)
 
 ---
