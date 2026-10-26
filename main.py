@@ -11,6 +11,9 @@ from windows.WinEdit_BaseEcosystems import WinEditEcosystem, WinEditBase
 from windows.WinEditComponents import WinEditComponents
 from windows.WinEditEfects import WinEditEfects
 
+from updater import run_updater_check
+from PyQt6.QtCore import QTimer
+
 class Ui_MainWindow(object):
 
     def _filter_effects(self):
@@ -476,6 +479,8 @@ if __name__ == "__main__":
     window = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
     ui.setupUi(window)
+
+    QTimer.singleShot(1000, run_updater_check)
 
     window.show()
     sys.exit(app.exec())
