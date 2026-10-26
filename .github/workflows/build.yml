@@ -75,10 +75,21 @@ jobs:
         shell: bash
         run: chmod +x .github/scripts/build_macos.sh && .github/scripts/build_macos.sh
 
-      - name: Build Linux App
+      # Linux-сборка в Docker-контейнере для воспроизводимости (Этап 2 плана)
+      - name: Build Linux App in Docker
         if: matrix.os == 'ubuntu-latest'
         shell: bash
-        run: chmod +x .github/scripts/build_linux.sh && .github/scripts/build_linux.sh
+        run: |
+          echo "Building Docker image for Linux build..."
+          docker build -t alchemy-linux-builder -f .github/docker/Dockerfile .
+          
+          echo "Running build inside Docker container..."
+          docker run --rm \
+            -v ${{ github.workspace }}:/app \
+            alchemy-linux-builder
+          
+          echo "Verifying build output..."
+          ls -lh dist/
 
       # 8. Загрузка артефактов (для тестирования и релиза)
       - name: Upload Windows Artifact
