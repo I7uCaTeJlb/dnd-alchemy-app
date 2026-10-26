@@ -1,9 +1,11 @@
 import sys
+import os
+import sentry_sdk
 from PyQt6 import QtWidgets, QtGui
 from PyQt6.QtWidgets import QStackedWidget
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from math import ceil
-import os
+import sqlite3
 from scripts.CRUD import *
 
 from windows.WinEdit_ActionState import WinEditActions, WinEditState
@@ -12,7 +14,26 @@ from windows.WinEditComponents import WinEditComponents
 from windows.WinEditEfects import WinEditEfects
 
 from updater import run_updater_check
-from PyQt6.QtCore import QTimer
+
+# ==========================================
+# 1. ИНИЦИАЛИЗАЦИЯ SENTRY (СТРОГО В САМОМ НАЧАЛЕ!)
+# ==========================================
+sentry_sdk.init(
+    dsn="https://a10abfaaa786e2427331a2dbc9796cb7@o4512323346890752.ingest.de.sentry.io/4512323440738384",
+    release="dnd-alchemy-app@1.0.1",
+    environment="production",
+    traces_sample_rate=1.0,
+)
+
+
+# ==========================================
+# 2. ФУНКЦИЯ ТЕСТОВОЙ ОШИБКИ ДЛЯ SENTRY
+# ==========================================
+def trigger_test_error():
+    """Вызывает контролируемую ошибку для проверки работы Sentry"""
+    sentry_sdk.capture_message("Тестовое сообщение из DnD Alchemy App - пользователь нажал кнопку теста")
+    raise ValueError("Тестовая ошибка: деление на ноль в алхимическом котле!")
+
 
 class Ui_MainWindow(object):
 
@@ -57,6 +78,8 @@ class Ui_MainWindow(object):
             print(f"Error opening window {WindowClass.__name__}: {e}")
             import traceback
             traceback.print_exc()
+            # Отправляем ошибку в Sentry
+            sentry_sdk.capture_exception(e)
 
     def _on_window_closed(self, window):
         """Вызывается, когда дочернее окно испускает сигнал closed."""
@@ -88,11 +111,11 @@ class Ui_MainWindow(object):
         for i in range(self.GL_ecosys.count()):
             self.GL_ecosys.itemAt(i).widget().deleteLater()
 
-        for i in range(ceil(len(m)/3)):
+        for i in range(ceil(len(m) / 3)):
             for j in range(3):
-                if i*3 + j == len(m): break
-                CH = QtWidgets.QCheckBox(m[i*3 + j][0])
-                CH.setToolTip(m[i*3 + j][1])
+                if i * 3 + j == len(m): break
+                CH = QtWidgets.QCheckBox(m[i * 3 + j][0])
+                CH.setToolTip(m[i * 3 + j][1])
 
                 self.GL_ecosys.addWidget(CH, i, j)
 
@@ -158,7 +181,7 @@ class Ui_MainWindow(object):
         self.M_export_M_list_state = QtGui.QAction("Список состояний ингредиентов")
 
         self.file_menu_A_setting = QtGui.QAction("Настройки")
-        #self.file_menu_A_setting.triggered.connect(lambda: self._OpenNewWindow(WinSettings))
+        # self.file_menu_A_setting.triggered.connect(lambda: self._OpenNewWindow(WinSettings))
 
         self.file_menu_A_exit = QtGui.QAction("Выход")
         self.file_menu.addAction(self.file_menu_A_open)
@@ -199,7 +222,18 @@ class Ui_MainWindow(object):
 
         self.help_menu = self.menu_bar.addMenu('Руководство пользователя')
 
+        # === МЕНЮ СПРАВКА С КНОПКОЙ ТЕСТА SENTRY ===
         self.info_menu = self.menu_bar.addMenu('Справка')
+
+        # Добавляем действие для тестирования Sentry
+        self.test_sentry_action = QtGui.QAction("🐛 Тест Sentry (вызвать ошибку)")
+        self.test_sentry_action.triggered.connect(lambda: trigger_test_error())
+        self.info_menu.addAction(self.test_sentry_action)
+
+        self.info_menu.addSeparator()  # Разделитель
+
+        self.info_menu_A_about = QtGui.QAction("О программе")
+        self.info_menu.addAction(self.info_menu_A_about)
 
         # ===ОСНОВНОЙ ХОЛСТ===
 
@@ -467,9 +501,11 @@ class Ui_MainWindow(object):
 
         MainWindow.setCentralWidget(self.SP_main)  # говорим, что главный виджет является центральныm
 
+
 if __name__ == "__main__":
-    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "0"  # автоматическим определением коэффициента масштабирования на основе DPI монитора
-    os.environ["QT_SCALE_FACTOR"] = "0.8"            # Применяет глобальный множитель ко всем элементам интерфейса
+    os.environ[
+        "QT_AUTO_SCREEN_SCALE_FACTOR"] = "0"  # автоматическим определением коэффициента масштабирования на основе DPI монитора
+    os.environ["QT_SCALE_FACTOR"] = "0.8"  # Применяет глобальный множитель ко всем элементам интерфейса
 
     app = QtWidgets.QApplication(sys.argv)
 
@@ -480,6 +516,7 @@ if __name__ == "__main__":
     ui = Ui_MainWindow()
     ui.setupUi(window)
 
+    # Автоматическая проверка обновлений через 1 секунду после запуска
     QTimer.singleShot(1000, run_updater_check)
 
     window.show()
