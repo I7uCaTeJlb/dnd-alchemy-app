@@ -6,15 +6,12 @@ on:
       - develop
       - master
     tags:
-      - 'v*'          # Триггер для релизов: v1.0.0, v1.1.0, v2.0.0 и т.д.
+      - 'v*'
   pull_request:
     branches:
       - develop
 
 jobs:
-  # ============================================
-  # JOB 1: СБОРКА (всегда запускается при push/PR)
-  # ============================================
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -22,22 +19,19 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.13']  # Версия Python, на которой написан проект
+        python-version: ['3.13']
 
     steps:
-      # 1. Скачиваем код репозитория
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Нужно для генерации changelog в release job
+          fetch-depth: 0
 
-      # 2. Устанавливаем Python
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      # 3. Кэшируем зависимости pip для ускорения сборок
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -46,25 +40,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      # 4. Устанавливаем зависимости
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller flake8 pytest
 
-      # 5. Линтинг (проверка стиля кода)
       - name: Run flake8
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
 
-      # 6. Тесты (заготовка — раскомментировать, когда появятся тесты)
       - name: Run pytest
         run: |
           pytest --version || echo "No tests found, skipping pytest"
           # pytest tests/ || true
 
-      # 7. Запуск скрипта сборки для конкретной ОС
       - name: Build Windows App
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -75,7 +65,6 @@ jobs:
         shell: bash
         run: chmod +x .github/scripts/build_macos.sh && .github/scripts/build_macos.sh
 
-      # Linux-сборка в Docker-контейнере для воспроизводимости (Этап 2 плана)
       - name: Build Linux App in Docker
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -91,7 +80,6 @@ jobs:
           echo "Verifying build output..."
           ls -lh dist/
 
-      # 8. Загрузка артефактов (для тестирования и релиза)
       - name: Upload Windows Artifact
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
@@ -116,25 +104,20 @@ jobs:
           path: dist/Alchemy-Linux
           retention-days: 7
 
-  # ============================================
-  # JOB 2: ПУБЛИКАЦИЯ РЕЛИЗА (только по тегу v*)
-  # ============================================
   release:
     name: Create GitHub Release
-    needs: build  # Ждёт завершения сборки
-    if: startsWith(github.ref, 'refs/tags/v')  # Запускается только для тегов v*
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Нужно для создания релиза
+      contents: write
 
     steps:
-      # 1. Скачиваем код (нужен для генерации changelog)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Генерация changelog из коммитов
       - name: Generate Changelog
         id: changelog
         run: |
@@ -149,7 +132,6 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # 3. Скачиваем артефакты со всех платформ
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
@@ -168,15 +150,12 @@ jobs:
           name: Alchemy-Linux
           path: release-artifacts/
 
-      # 4. Создаём GitHub Release и загружаем файлы
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "Release ${{ github.ref_name }}"
-          body: |
-            ## 🚀 Changes in ${{ github.ref_name }}
-            
+          body: |            
             ${{ steps.changelog.outputs.changelog }}
             
             ---

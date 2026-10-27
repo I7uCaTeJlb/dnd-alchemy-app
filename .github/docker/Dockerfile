@@ -1,14 +1,8 @@
-# ============================================================
-# Dockerfile для сборки Linux-версии dnd-alchemy-app
-# ============================================================
-
 FROM python:3.13-slim
 
 LABEL maintainer="l7uCaTeJlb"
 LABEL description="Build environment for dnd-alchemy-app (Linux)"
 
-# Устанавливаем системные зависимости
-# ВАЖНО: добавлен binutils (содержит objdump, необходимый PyInstaller)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     binutils \
     libgl1 \
