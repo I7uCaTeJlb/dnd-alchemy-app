@@ -509,7 +509,5 @@ if __name__ == "__main__":
 
     QTimer.singleShot(1000, run_updater_check)
 
-    print(123)
-
     window.show()
     sys.exit(app.exec())
