@@ -5,7 +5,6 @@ from PyQt6 import QtWidgets, QtGui
 from PyQt6.QtWidgets import QStackedWidget
 from PyQt6.QtCore import Qt, QTimer
 from math import ceil
-import sqlite3
 from scripts.CRUD import *
 
 from windows.WinEdit_ActionState import WinEditActions, WinEditState
@@ -15,9 +14,6 @@ from windows.WinEditEfects import WinEditEfects
 
 from updater import run_updater_check
 
-# ==========================================
-# 1. ИНИЦИАЛИЗАЦИЯ SENTRY (СТРОГО В САМОМ НАЧАЛЕ!)
-# ==========================================
 sentry_sdk.init(
     dsn="https://a10abfaaa786e2427331a2dbc9796cb7@o4512323346890752.ingest.de.sentry.io/4512323440738384",
     release="dnd-alchemy-app@1.0.1",
@@ -25,12 +21,7 @@ sentry_sdk.init(
     traces_sample_rate=1.0,
 )
 
-
-# ==========================================
-# 2. ФУНКЦИЯ ТЕСТОВОЙ ОШИБКИ ДЛЯ SENTRY
-# ==========================================
 def trigger_test_error():
-    """Вызывает контролируемую ошибку для проверки работы Sentry"""
     sentry_sdk.capture_message("Тестовое сообщение из DnD Alchemy App - пользователь нажал кнопку теста")
     raise ValueError("Тестовая ошибка: деление на ноль в алхимическом котле!")
 
@@ -516,8 +507,7 @@ if __name__ == "__main__":
     ui = Ui_MainWindow()
     ui.setupUi(window)
 
-    # Автоматическая проверка обновлений через 1 секунду после запуска
     QTimer.singleShot(1000, run_updater_check)
-
+    print(123)
     window.show()
     sys.exit(app.exec())

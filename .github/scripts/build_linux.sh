@@ -1,6 +1,5 @@
 #!/bin/bash
-# Сборка для Linux
-set -e  # <-- ВАЖНО: немедленно прерывать скрипт при любой ошибке
+set -e
 
 echo "Starting Linux build..."
 

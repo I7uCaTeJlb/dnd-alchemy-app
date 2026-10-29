@@ -1,4 +1,3 @@
-# Сборка для Windows
 Write-Host "Starting Windows build..."
 
 # Параметры PyInstaller:
